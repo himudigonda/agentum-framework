@@ -110,12 +110,12 @@ class GraphCompiler:
                 )
 
             human_message = HumanMessage(content=message_content)
-            # --- END OF UPGRADED LOGIC ---
 
-            # --- NEW MEMORY LOGIC ---
             messages = []
             if agent.memory:
+                agent.append_message_for_search(human_message)
                 messages.extend(agent.memory.load_messages())
+
             messages.append(human_message)
 
             # --- NEW RESILIENCE LOGIC ---
