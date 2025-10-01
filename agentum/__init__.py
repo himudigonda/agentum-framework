@@ -13,9 +13,9 @@ from .exceptions import (
     ToolError,
     WorkflowDefinitionError,
 )
-from .llm_providers import GoogleLLM
 from .memory import ConversationMemory
 from .messages import AIMessage, HumanMessage, ToolMessage
+from .providers import AnthropicLLM, GoogleLLM
 from .rag import KnowledgeBase
 from .state import State
 from .testing import Evaluator, TestSuite
@@ -29,6 +29,7 @@ __all__ = [
     "tool",
     "Workflow",
     "GoogleLLM",
+    "AnthropicLLM",
     "AIMessage",
     "HumanMessage",
     "ToolMessage",
