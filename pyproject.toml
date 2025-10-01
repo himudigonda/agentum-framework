@@ -4,21 +4,23 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentum"
-version = "0.1.0"
-description = "A Python-native framework for building, orchestrating, and observing multi-agent systems."
+version = "1.0.0"
+description = "A Python-native framework for building, orchestrating, and observing multi-agent systems with RAG capabilities."
 readme = "README.md"
-authors = [{ name = "Your Name", email = "your.email@example.com" }]
+authors = [{ name = "Agentum Team", email = "team@agentum.dev" }]
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-keywords = ["ai", "multi-agent", "workflow", "orchestration", "llm", "agents"]
+keywords = ["ai", "multi-agent", "workflow", "orchestration", "llm", "agents", "rag", "vector-search"]
 
 # --- Core Dependencies ---
 dependencies = [
@@ -31,7 +33,17 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "langchain-google-genai>=2.1.12",
     "redis>=5.0.0", # For state persistence
+    "langchain-community>=0.2.0", # For document loaders and splitters
+    "chromadb>=0.5.0", # A great local-first vector store
+    "sentence-transformers>=2.7.0", # For high-quality open-source embeddings
+    "graphviz>=0.21",
 ]
+
+[project.urls]
+Homepage = "https://github.com/agentum-framework/agentum"
+Documentation = "https://agentum.dev"
+Repository = "https://github.com/agentum-framework/agentum"
+Issues = "https://github.com/agentum-framework/agentum/issues"
 
 # --- Development Dependencies ---
 [project.optional-dependencies]
