@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-
-# MODIFICATION: Import rich components for beautiful output
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax

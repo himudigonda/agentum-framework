@@ -32,14 +32,12 @@ class StreamingState(State):
 researcher = Agent(
     name="StreamResearcher",
     system_prompt="You are an expert researcher. Find a detailed article on a topic.",
-    # MODIFICATION: Use settings object
     llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"),
     tools=[search_web_tavily],
 )
 summarizer = Agent(
     name="StreamSummarizer",
     system_prompt="You are an expert summarizer. Create a concise, one-paragraph summary of the provided text.",
-    # MODIFICATION: Use settings object
     llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"),
 )
 

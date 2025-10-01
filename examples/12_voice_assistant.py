@@ -21,7 +21,6 @@ import os
 
 from dotenv import load_dotenv
 
-# MODIFICATION: Import settings
 from agentum import Agent, GoogleLLM, State, Workflow, text_to_speech, transcribe_audio
 from agentum.config import settings
 
@@ -38,7 +37,6 @@ class VoiceAssistantState(State):
 assistant_agent = Agent(
     name="HelpfulAssistant",
     system_prompt="You are a helpful and friendly assistant. You provide concise, clear answers to questions.",
-    # MODIFICATION: Use settings object
     llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"),
 )
 
@@ -51,9 +49,6 @@ voice_assistant_workflow.add_task(
     tool=transcribe_audio,
     inputs={
         "audio_filepath": "{input_audio_path}",
-        # MODIFICATION: We can now omit 'project_id' as the tool will get it from settings.
-        # This simplifies the workflow definition.
-        # "project_id": settings.GOOGLE_CLOUD_PROJECT_ID,
     },
     output_mapping={"question_text": "output"},
 )

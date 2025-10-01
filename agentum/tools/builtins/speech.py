@@ -2,8 +2,6 @@ from google.cloud import texttospeech
 from langchain_google_community import SpeechToTextLoader
 
 from agentum import tool
-
-# MODIFICATION: Import the centralized settings
 from agentum.config import settings
 
 
@@ -23,21 +21,17 @@ def transcribe_audio(audio_filepath: str, project_id: str | None = None) -> str:
         The transcribed text as a string.
     """
     try:
-        # MODIFICATION: Use the provided project_id or fall back to global settings
         proj_id = project_id or settings.GOOGLE_CLOUD_PROJECT_ID
         if not proj_id:
             return "Error: A Google Cloud Project ID was not provided and is not set in the environment (GOOGLE_CLOUD_PROJECT_ID)."
 
-        # The loader handles the interaction with the Google Cloud API
         loader = SpeechToTextLoader(project_id=proj_id, file_path=audio_filepath)
 
-        # The result is a list of LangChain 'Document' objects
         documents = loader.load()
 
         if not documents:
             return "Error: Could not transcribe the audio. The file might be empty or unsupported."
 
-        # We combine the content of all resulting documents into a single text block
         transcription = " ".join(doc.page_content for doc in documents)
         return transcription
     except Exception as e:
@@ -58,8 +52,6 @@ def text_to_speech(text_to_speak: str, output_filepath: str) -> str:
         A confirmation string with the path to the saved audio file.
     """
     try:
-        # NOTE: The client for TTS automatically finds the project_id from the environment
-        # if the user is authenticated, so no explicit passing is needed here.
         client = texttospeech.TextToSpeechClient()
 
         # Set the text input to be synthesized

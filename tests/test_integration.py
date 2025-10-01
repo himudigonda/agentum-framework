@@ -10,11 +10,11 @@ This test runs without requiring API keys and focuses on:
 - Error handling
 """
 
-import os  # MODIFICATION: Import os
+import os
 import tempfile
 from typing import Any
 
-import pytest  # MODIFICATION: Import pytest
+import pytest
 
 from agentum import (
     Agent,
@@ -41,11 +41,9 @@ def simple_tool(input_text: str) -> str:
     return f"Tool processed: {input_text}"
 
 
-# MODIFICATION: Mark the entire test function as an integration test
 @pytest.mark.integration
 def test_framework_components():
     """Test all framework components can be instantiated with real providers."""
-    # MODIFICATION: Add a guard to skip if keys are missing
     if not os.getenv("GOOGLE_API_KEY") or not os.getenv("ANTHROPIC_API_KEY"):
         pytest.skip("API keys not found, skipping integration test")
 
@@ -166,7 +164,6 @@ def test_error_handling():
     print("\n🧪 Testing error handling...")
 
     workflow = Workflow(name="ErrorTest", state=TestState)
-    # MODIFICATION: Use a mock LLM to prevent network calls
     from tests.mock_llm import MockLLM
 
     agent = Agent(name="ErrorAgent", system_prompt="Test agent.", llm=MockLLM())
