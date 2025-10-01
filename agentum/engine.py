@@ -25,6 +25,7 @@ class GraphCompiler:
         """Creates a runnable node for an agent task."""
         agent = task_details["agent"]
         instructions_template = task_details["instructions"]
+        output_mapping = task_details["output_mapping"]
 
         async def agent_node(state: State) -> Dict[str, Any]:  # Now async
             console.print(
@@ -37,13 +38,13 @@ class GraphCompiler:
                 f"{agent.system_prompt}\n\n{formatted_instructions}"
             )
 
-            # Store the result in a specific state field based on task name
-            if task_name == "critique_draft":
-                return {"critique_result": response.content}
-            elif task_name == "edit_draft":
-                return {"draft": response.content}
-            else:
-                return {task_name: response.content}
+            # Use the explicit mapping provided by the developer
+            # This is generic and powerful!
+            state_update = {
+                state_key: response.content
+                for state_key, response_key in output_mapping.items()
+            }
+            return state_update
 
         return agent_node
 
@@ -51,6 +52,7 @@ class GraphCompiler:
         """Creates a runnable node for a tool task."""
         tool_func = task_details["tool"]
         input_mapping = task_details["inputs"] or {}
+        output_mapping = task_details["output_mapping"]
 
         async def tool_node(state: State) -> Dict[str, Any]:  # Now async
             console.print(f"  Executing Tool Task: [bold cyan]{task_name}[/bold cyan]")
@@ -66,7 +68,11 @@ class GraphCompiler:
                 # Run synchronous tools in a separate thread to avoid blocking the event loop
                 result = await asyncio.to_thread(tool_func, **resolved_inputs)
 
-            return {task_name: result}
+            # Use the explicit mapping for tools as well
+            state_update = {
+                state_key: result for state_key, response_key in output_mapping.items()
+            }
+            return state_update
 
         return tool_node
 

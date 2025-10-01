@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from pydantic import Field
 
-from agentum import Agent, OpenAILLM, State, Workflow, tool
+from agentum import Agent, GoogleLLM, State, Workflow, tool
 
 # Load API keys from .env file
 load_dotenv()
@@ -30,12 +30,14 @@ def save_summary(summary: str):
 
 
 # 3. Configure a real LLM and define an agent
-openai_llm = OpenAILLM(api_key=os.getenv("OPENAI_API_KEY"), model="gpt-4o-mini")
+google_llm = GoogleLLM(
+    api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"
+)
 
 researcher = Agent(
     name="Researcher",
     system_prompt="You are a helpful research assistant. Keep your answers concise and to the point (2-3 sentences).",
-    llm=openai_llm,
+    llm=google_llm,
 )
 
 # 4. Define the workflow

@@ -36,6 +36,7 @@ class Workflow:
         tool: Optional[Callable] = None,
         instructions: Optional[str] = None,
         inputs: Optional[Dict[str, Any]] = None,
+        output_mapping: Optional[Dict[str, str]] = None,  # NEW PARAMETER
     ):
         """Adds a node (a unit of work) to the workflow."""
         if name in self.tasks:
@@ -45,6 +46,7 @@ class Workflow:
             "tool": tool,
             "instructions": instructions,
             "inputs": inputs,
+            "output_mapping": output_mapping or {name: "output"},  # Default mapping
         }
         console.print(f"  - Task added: [cyan]{name}[/cyan]")
 

@@ -29,6 +29,7 @@ dependencies = [
     "rich>=13.7", # For beautiful logging
     "typer>=0.12", # For a future CLI
     "python-dotenv>=1.1.1",
+    "langchain-google-genai>=2.1.12",
 ]
 
 # --- Development Dependencies ---
