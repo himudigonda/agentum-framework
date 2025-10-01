@@ -29,6 +29,10 @@ class MockLLM:
 
         return MockResponse()
 
+    async def ainvoke(self, prompt: str):
+        # For async compatibility, we can just call the sync version
+        return self.invoke(prompt)
+
 
 # 4. Define the workflow
 test_workflow = Workflow(name="Test_Pipeline", state=TestState)

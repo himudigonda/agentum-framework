@@ -1,5 +1,6 @@
 # agentum/workflow.py
-from typing import Any, Dict, Type
+import asyncio
+from typing import Any, Callable, Dict, Optional, Type
 
 from rich.console import Console
 
@@ -16,7 +17,9 @@ class Workflow:
 
     END = "__end__"
 
-    def __init__(self, name: str, state: Type[State], persistence: str = None):
+    def __init__(
+        self, name: str, state: Type[State], persistence: Optional[str] = None
+    ):
         self.name = name
         self.state_model = state
         self.persistence = persistence
@@ -29,10 +32,10 @@ class Workflow:
     def add_task(
         self,
         name: str,
-        agent: Any = None,
-        tool: callable = None,
-        instructions: str = None,
-        inputs: Dict = None,
+        agent: Optional[Any] = None,
+        tool: Optional[Callable] = None,
+        instructions: Optional[str] = None,
+        inputs: Optional[Dict[str, Any]] = None,
     ):
         """Adds a node (a unit of work) to the workflow."""
         if name in self.tasks:
@@ -50,7 +53,7 @@ class Workflow:
         self.edges.append((source, target))
         console.print(f"  - Edge added: [cyan]{source}[/cyan] -> [cyan]{target}[/cyan]")
 
-    def add_conditional_edges(self, source: str, path: callable, paths: Dict[str, str]):
+    def add_conditional_edges(self, source: str, path: Callable, paths: Dict[str, str]):
         """Defines a branching point based on the output of a path function."""
         console.print(f"  - Conditional Edge added from [cyan]{source}[/cyan]")
         # Store this complex edge information for the compiler
@@ -64,13 +67,12 @@ class Workflow:
     def _compile(self):
         """Compiles the workflow into a runnable graph, caching the result."""
         if not self._compiled_graph:
-            # Import here to avoid circular import
-            from .engine import GraphCompiler
-            
             console.print(
                 "\n🔧 [bold]Compiling workflow into an executable graph...[/bold]",
                 style="blue",
             )
+            from .engine import GraphCompiler
+
             compiler = GraphCompiler(self)
             self._compiled_graph = compiler.compile()
             console.print("✅ [bold]Compilation successful.[/bold]", style="green")
@@ -78,17 +80,22 @@ class Workflow:
 
     def run(self, initial_state: Dict) -> Dict:
         """
-        Executes the workflow with the given initial state.
+        Synchronous wrapper for the async execution of the workflow.
+        """
+        return asyncio.run(self.arun(initial_state))
+
+    async def arun(self, initial_state: Dict) -> Dict:
+        """
+        Asynchronously executes the workflow with the given initial state.
         """
         console.print(
             f"\n🚀 [bold]Running workflow '{self.name}'...[/bold]", style="yellow"
         )
 
-        # Get the compiled, runnable graph
         runnable_graph = self._compile()
 
-        # LangGraph's invoke method runs the graph
-        final_state = runnable_graph.invoke(initial_state)
+        # Use the async 'ainvoke' to run the graph
+        final_state = await runnable_graph.ainvoke(initial_state)
 
         console.print("\n🏁 [bold]Workflow finished.[/bold]", style="yellow")
         return final_state
