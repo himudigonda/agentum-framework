@@ -48,7 +48,7 @@ class GraphCompiler:
                 f"  Executing Agent Task: [bold magenta]{task_name}[/bold magenta]"
             )
 
-            # 1. Format the initial prompt
+            # 1. Format the initial prompt text
             try:
                 formatted_instructions = instructions_template.format(
                     **state.model_dump()
@@ -58,9 +58,23 @@ class GraphCompiler:
                     f"Missing state key '{e}' required by task '{task_name}' instructions template."
                 )
 
-            human_message = HumanMessage(
-                content=f"{agent.system_prompt}\n\n{formatted_instructions}"
-            )
+            # 2. Construct the message content, checking for an image
+            prompt_text = f"{agent.system_prompt}\n\n{formatted_instructions}"
+            message_content = [{"type": "text", "text": prompt_text}]
+
+            # If the state has an 'image_url' attribute and it's populated,
+            # we automatically create a multi-modal message.
+            if hasattr(state, "image_url") and getattr(state, "image_url"):
+                image_url = getattr(state, "image_url")
+                console.print(f"    - Attaching image for analysis: {image_url}")
+                message_content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url},
+                    }
+                )
+
+            human_message = HumanMessage(content=message_content)
 
             # --- NEW MEMORY LOGIC ---
             messages = []

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from agentum import Agent, ConversationMemory, GoogleLLM, State, Workflow, tool
+from tests.mock_llm import MockLLM, MockAsyncLLM
 
 
 class AgencyState(State):
@@ -41,7 +42,7 @@ class TestAgency:
         agent = Agent(
             name="TestAgent",
             system_prompt="You are a test agent.",
-            llm=MagicMock(),
+            llm=MockLLM(),
             tools=[test_tool],
         )
 
@@ -54,7 +55,7 @@ class TestAgency:
         agent = Agent(
             name="TestAgent",
             system_prompt="You are a test agent.",
-            llm=MagicMock(),
+            llm=MockLLM(),
             memory=ConversationMemory(),
         )
 
@@ -66,7 +67,7 @@ class TestAgency:
         agent = Agent(
             name="TestAgent",
             system_prompt="You are a test agent.",
-            llm=MagicMock(),
+            llm=MockLLM(),
             max_retries=5,
         )
 
@@ -95,9 +96,9 @@ class TestAgency:
         )
         final_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = [tool_call_response, final_response]
-        mock_llm.bind_tools = MagicMock(return_value=mock_llm)
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = [tool_call_response, final_response]
+        mock_llm.bind_tools_mock.return_value = mock_llm
 
         agent = Agent(
             name="TravelAgent",
@@ -133,8 +134,8 @@ class TestAgency:
         mock_response.content = "Hello Alice! Nice to meet you."
         mock_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.return_value = mock_response
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.return_value = mock_response
 
         agent = Agent(
             name="ChatAgent",
@@ -197,9 +198,9 @@ class TestAgency:
         final_response.content = "Final response"
         final_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = [tool_call_response, final_response]
-        mock_llm.bind_tools = MagicMock(return_value=mock_llm)
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = [tool_call_response, final_response]
+        mock_llm.bind_tools_mock.return_value = mock_llm
 
         agent = Agent(
             name="EventAgent",
@@ -260,9 +261,9 @@ class TestAgency:
         final_response.content = "Here's your complete travel guide for San Francisco."
         final_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = [weather_call, restaurant_call, final_response]
-        mock_llm.bind_tools = MagicMock(return_value=mock_llm)
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = [weather_call, restaurant_call, final_response]
+        mock_llm.bind_tools_mock.return_value = mock_llm
 
         agent = Agent(
             name="TravelAgent",
@@ -309,9 +310,9 @@ class TestAgency:
         final_response.content = "I encountered an error, but I can still help."
         final_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = [tool_call_response, final_response]
-        mock_llm.bind_tools = MagicMock(return_value=mock_llm)
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = [tool_call_response, final_response]
+        mock_llm.bind_tools_mock.return_value = mock_llm
 
         agent = Agent(
             name="ErrorAgent",
@@ -345,12 +346,12 @@ class TestAgency:
         def analyze_sentiment(text: str) -> str:
             return "positive" if "good" in text.lower() else "negative"
 
-        mock_llm = AsyncMock()
+        mock_llm = MockAsyncLLM()
         mock_response = MagicMock()
         mock_response.content = "Analysis complete"
         mock_response.tool_calls = []
-        mock_llm.ainvoke.return_value = mock_response
-        mock_llm.bind_tools.return_value = mock_llm
+        mock_llm.ainvoke_mock.return_value = mock_response
+        mock_llm.bind_tools_mock.return_value = mock_llm
 
         agent = Agent(
             name="SentimentAgent",
