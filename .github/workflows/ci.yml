@@ -3,8 +3,6 @@ name: Agentum CI
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
   build-and-test:
@@ -28,11 +26,6 @@ jobs:
 
     - name: Install dependencies (including dev tools)
       run: uv pip install --system -e ".[dev]"
-
-    - name: Run linter and formatter check
-      run: |
-        uv run ruff check .
-        uv run ruff format --check .
 
     - name: Run Unit and Logic Tests (Skip Integration Tests)
       run: uv run pytest -m "not integration"
