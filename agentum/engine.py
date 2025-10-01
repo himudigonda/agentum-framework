@@ -40,21 +40,30 @@ class GraphCompiler:
             llm_with_tools = agent.llm
 
         async def agent_node(state: State) -> Dict[str, Any]:
+            await self.workflow._emit("task_start", task_name=task_name, state=state)
+            await self.workflow._emit("agent_start", agent_name=agent.name, state=state)
+
             console.print(
                 f"  Executing Agent Task: [bold magenta]{task_name}[/bold magenta]"
             )
 
             # 1. Format the initial prompt
             formatted_instructions = instructions_template.format(**state.model_dump())
-            messages = [
-                HumanMessage(
-                    content=f"{agent.system_prompt}\n\n{formatted_instructions}"
-                )
-            ]
+            human_message = HumanMessage(
+                content=f"{agent.system_prompt}\n\n{formatted_instructions}"
+            )
+
+            # --- NEW MEMORY LOGIC ---
+            messages = []
+            if agent.memory:
+                messages.extend(agent.memory.load_messages())
+            messages.append(human_message)
 
             # 2. Start the agentic loop
             while True:
+                await self.workflow._emit("agent_llm_start", messages=messages)
                 response = await llm_with_tools.ainvoke(messages)
+                await self.workflow._emit("agent_llm_end", response=response)
 
                 if not response.tool_calls:
                     # If no tool calls, the agent has finished its thought process.
@@ -71,6 +80,12 @@ class GraphCompiler:
 
                 # 3. Execute the requested tools
                 for tool_call in response.tool_calls:
+                    await self.workflow._emit(
+                        "agent_tool_call",
+                        tool_name=tool_call["name"],
+                        tool_args=tool_call["args"],
+                    )
+
                     tool_func = next(
                         (t for t in agent.tools if t.__name__ == tool_call["name"]),
                         None,
@@ -88,6 +103,12 @@ class GraphCompiler:
                     try:
                         # Execute the tool and get the result
                         result = await asyncio.to_thread(tool_func, **tool_call["args"])
+                        await self.workflow._emit(
+                            "agent_tool_result",
+                            tool_name=tool_call["name"],
+                            result=result,
+                        )
+
                         # Add the tool's result to the message history for the next loop
                         messages.append(
                             ToolMessage(
@@ -107,10 +128,23 @@ class GraphCompiler:
 
             # The loop is finished, the final response is in `response.content`
             final_content = response.content
+
+            # --- NEW MEMORY LOGIC ---
+            if agent.memory:
+                # Save the latest human input and the final AI response
+                agent.memory.save_messages([human_message, response])
+
+            await self.workflow._emit(
+                "agent_end", agent_name=agent.name, final_response=final_content
+            )
+
             state_update = {
                 state_key: final_content
                 for state_key, response_key in output_mapping.items()
             }
+            await self.workflow._emit(
+                "task_finish", task_name=task_name, state_update=state_update
+            )
             return state_update
 
         return agent_node
@@ -122,6 +156,8 @@ class GraphCompiler:
         output_mapping = task_details["output_mapping"]
 
         async def tool_node(state: State) -> Dict[str, Any]:  # Now async
+            await self.workflow._emit("task_start", task_name=task_name, state=state)
+
             console.print(f"  Executing Tool Task: [bold cyan]{task_name}[/bold cyan]")
             resolved_inputs = {
                 key: template.format(**state.model_dump())
@@ -139,6 +175,9 @@ class GraphCompiler:
             state_update = {
                 state_key: result for state_key, response_key in output_mapping.items()
             }
+            await self.workflow._emit(
+                "task_finish", task_name=task_name, state_update=state_update
+            )
             return state_update
 
         return tool_node

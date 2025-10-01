@@ -27,7 +27,25 @@ class Workflow:
         self.edges = []
         self.entry_point = None
         self._compiled_graph = None  # Add a cache for the compiled graph
+        self.event_listeners = {}  # NEW: dictionary to hold event listeners
         console.print(f"✨ Workflow '{self.name}' initialized.", style="bold green")
+
+    def on(self, event: str):
+        """A decorator to register a listener for a workflow event."""
+
+        def decorator(func: Callable):
+            if event not in self.event_listeners:
+                self.event_listeners[event] = []
+            self.event_listeners[event].append(func)
+            return func
+
+        return decorator
+
+    async def _emit(self, event: str, **kwargs):
+        """Asynchronously calls all registered listeners for an event."""
+        if event in self.event_listeners:
+            for listener in self.event_listeners[event]:
+                await listener(**kwargs)
 
     def add_task(
         self,
@@ -90,6 +108,8 @@ class Workflow:
         """
         Asynchronously executes the workflow with the given initial state.
         """
+        await self._emit("workflow_start", workflow_name=self.name, state=initial_state)
+
         console.print(
             f"\n🚀 [bold]Running workflow '{self.name}'...[/bold]", style="yellow"
         )
@@ -100,4 +120,6 @@ class Workflow:
         final_state = await runnable_graph.ainvoke(initial_state)
 
         console.print("\n🏁 [bold]Workflow finished.[/bold]", style="yellow")
+
+        await self._emit("workflow_finish", workflow_name=self.name, state=final_state)
         return final_state

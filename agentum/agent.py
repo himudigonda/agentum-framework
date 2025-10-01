@@ -15,4 +15,5 @@ class Agent(BaseModel):
     system_prompt: str
     llm: Any  # For now, we'll keep this generic.
     tools: Optional[List[Any]] = None  # Changed from callable to Any
-    # Future additions: memory, max_retries, structured_output
+    memory: Optional[Any] = None  # NEW: memory support
+    # Future additions: max_retries, structured_output
