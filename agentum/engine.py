@@ -3,6 +3,7 @@ import asyncio
 import inspect
 from typing import Any, Dict
 
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from rich.console import Console
@@ -22,26 +23,92 @@ class GraphCompiler:
         self.workflow = workflow
 
     def _create_agent_node(self, task_name: str, task_details: Dict):
-        """Creates a runnable node for an agent task."""
+        """Creates a runnable agent executor node that can use tools."""
         agent = task_details["agent"]
         instructions_template = task_details["instructions"]
         output_mapping = task_details["output_mapping"]
 
-        async def agent_node(state: State) -> Dict[str, Any]:  # Now async
+        # --- The New Logic: Bind Tools to the LLM ---
+        if agent.tools:
+            # This tells the LLM about the available tools and their schemas.
+            console.print(
+                f"    - Binding {len(agent.tools)} tools to LLM: {[t.__name__ for t in agent.tools]}"
+            )
+            llm_with_tools = agent.llm.bind_tools(agent.tools)
+        else:
+            console.print("    - No tools available for this agent")
+            llm_with_tools = agent.llm
+
+        async def agent_node(state: State) -> Dict[str, Any]:
             console.print(
                 f"  Executing Agent Task: [bold magenta]{task_name}[/bold magenta]"
             )
+
+            # 1. Format the initial prompt
             formatted_instructions = instructions_template.format(**state.model_dump())
+            messages = [
+                HumanMessage(
+                    content=f"{agent.system_prompt}\n\n{formatted_instructions}"
+                )
+            ]
 
-            # Use the async 'ainvoke' method
-            response = await agent.llm.ainvoke(
-                f"{agent.system_prompt}\n\n{formatted_instructions}"
-            )
+            # 2. Start the agentic loop
+            while True:
+                response = await llm_with_tools.ainvoke(messages)
 
-            # Use the explicit mapping provided by the developer
-            # This is generic and powerful!
+                if not response.tool_calls:
+                    # If no tool calls, the agent has finished its thought process.
+                    console.print(f"    - Agent '{agent.name}' responded directly.")
+                    break
+
+                # The agent wants to use a tool!
+                console.print(
+                    f"    - Agent '{agent.name}' wants to call tools: {[tc['name'] for tc in response.tool_calls]}"
+                )
+                messages.append(
+                    response
+                )  # Add the AI's tool-calling request to history
+
+                # 3. Execute the requested tools
+                for tool_call in response.tool_calls:
+                    tool_func = next(
+                        (t for t in agent.tools if t.__name__ == tool_call["name"]),
+                        None,
+                    )
+                    if not tool_func:
+                        # This is a safety check; should rarely happen if the LLM is good
+                        messages.append(
+                            ToolMessage(
+                                content=f"Error: Tool '{tool_call['name']}' not found.",
+                                tool_call_id=tool_call["id"],
+                            )
+                        )
+                        continue
+
+                    try:
+                        # Execute the tool and get the result
+                        result = await asyncio.to_thread(tool_func, **tool_call["args"])
+                        # Add the tool's result to the message history for the next loop
+                        messages.append(
+                            ToolMessage(
+                                content=str(result), tool_call_id=tool_call["id"]
+                            )
+                        )
+                    except Exception as e:
+                        error_message = (
+                            f"Error executing tool '{tool_call['name']}': {e}"
+                        )
+                        console.print(f"[bold red]    - {error_message}[/bold red]")
+                        messages.append(
+                            ToolMessage(
+                                content=error_message, tool_call_id=tool_call["id"]
+                            )
+                        )
+
+            # The loop is finished, the final response is in `response.content`
+            final_content = response.content
             state_update = {
-                state_key: response.content
+                state_key: final_content
                 for state_key, response_key in output_mapping.items()
             }
             return state_update
