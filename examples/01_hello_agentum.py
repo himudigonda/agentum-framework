@@ -4,7 +4,9 @@ import os
 from dotenv import load_dotenv
 from pydantic import Field
 
+# MODIFICATION: Import settings
 from agentum import Agent, GoogleLLM, State, Workflow, tool
+from agentum.config import settings
 
 # Load API keys from .env file
 load_dotenv()
@@ -31,7 +33,9 @@ def save_summary(summary: str):
 
 # 3. Configure a real LLM and define an agent
 google_llm = GoogleLLM(
-    api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"
+    # MODIFICATION: Use settings object
+    api_key=settings.GOOGLE_API_KEY,
+    model="gemini-2.5-flash-lite",
 )
 
 researcher = Agent(

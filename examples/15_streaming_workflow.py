@@ -17,6 +17,7 @@ import os
 from dotenv import load_dotenv
 
 from agentum import Agent, GoogleLLM, State, Workflow, search_web_tavily
+from agentum.config import settings
 
 load_dotenv()
 
@@ -31,13 +32,15 @@ class StreamingState(State):
 researcher = Agent(
     name="StreamResearcher",
     system_prompt="You are an expert researcher. Find a detailed article on a topic.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
+    # MODIFICATION: Use settings object
+    llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"),
     tools=[search_web_tavily],
 )
 summarizer = Agent(
     name="StreamSummarizer",
     system_prompt="You are an expert summarizer. Create a concise, one-paragraph summary of the provided text.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
+    # MODIFICATION: Use settings object
+    llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"),
 )
 
 # 2. Define the Workflow

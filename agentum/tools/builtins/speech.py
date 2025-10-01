@@ -3,9 +3,12 @@ from langchain_google_community import SpeechToTextLoader
 
 from agentum import tool
 
+# MODIFICATION: Import the centralized settings
+from agentum.config import settings
+
 
 @tool
-def transcribe_audio(audio_filepath: str, project_id: str) -> str:
+def transcribe_audio(audio_filepath: str, project_id: str | None = None) -> str:
     """
     Transcribes the content of an audio file using Google's Speech-to-Text API.
 
@@ -14,14 +17,19 @@ def transcribe_audio(audio_filepath: str, project_id: str) -> str:
 
     Args:
         audio_filepath: The local path to the audio file (e.g., './audio/request.wav').
-        project_id: Your Google Cloud Project ID.
+        project_id: Your Google Cloud Project ID. If not provided, will use the global setting.
 
     Returns:
         The transcribed text as a string.
     """
     try:
+        # MODIFICATION: Use the provided project_id or fall back to global settings
+        proj_id = project_id or settings.GOOGLE_CLOUD_PROJECT_ID
+        if not proj_id:
+            return "Error: A Google Cloud Project ID was not provided and is not set in the environment (GOOGLE_CLOUD_PROJECT_ID)."
+
         # The loader handles the interaction with the Google Cloud API
-        loader = SpeechToTextLoader(project_id=project_id, file_path=audio_filepath)
+        loader = SpeechToTextLoader(project_id=proj_id, file_path=audio_filepath)
 
         # The result is a list of LangChain 'Document' objects
         documents = loader.load()
@@ -50,7 +58,8 @@ def text_to_speech(text_to_speak: str, output_filepath: str) -> str:
         A confirmation string with the path to the saved audio file.
     """
     try:
-        # Instantiates a client
+        # NOTE: The client for TTS automatically finds the project_id from the environment
+        # if the user is authenticated, so no explicit passing is needed here.
         client = texttospeech.TextToSpeechClient()
 
         # Set the text input to be synthesized
