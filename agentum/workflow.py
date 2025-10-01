@@ -4,6 +4,8 @@ from typing import Any, AsyncGenerator, Callable, Dict, Optional, Type
 
 from rich.console import Console
 
+from .exceptions import TaskConfigurationError, WorkflowDefinitionError
+
 # Import moved to _compile method to avoid circular import
 from .state import State
 
@@ -13,6 +15,40 @@ console = Console()
 class Workflow:
     """
     The main orchestrator for defining, compiling, and running an agentic graph.
+
+    A Workflow is the central component that orchestrates agents and tools
+    into a coherent execution graph. It handles task definition, control flow,
+    state management, and execution.
+
+    Attributes:
+        name: A unique identifier for this workflow
+        state_model: The State class that defines the workflow's data schema
+        persistence: Optional Redis URL for state persistence
+        tasks: Dictionary of task definitions
+        edges: List of control flow edges between tasks
+        entry_point: The starting task of the workflow
+        event_listeners: Dictionary of event listeners for observability
+
+    Example:
+        ```python
+        class ResearchState(State):
+            topic: str
+            result: str = ""
+
+        workflow = Workflow(name="ResearchPipeline", state=ResearchState)
+
+        workflow.add_task(
+            name="research",
+            agent=researcher_agent,
+            instructions="Research: {topic}",
+            output_mapping={"result": "output"}
+        )
+
+        workflow.set_entry_point("research")
+        workflow.add_edge("research", workflow.END)
+
+        result = workflow.run({"topic": "AI trends"})
+        ```
     """
 
     END = "__end__"
@@ -31,7 +67,25 @@ class Workflow:
         console.print(f"✨ Workflow '{self.name}' initialized.", style="bold green")
 
     def on(self, event: str):
-        """A decorator to register a listener for a workflow event."""
+        """
+        A decorator to register a listener for a workflow event.
+
+        This method enables observability by allowing you to hook into
+        workflow execution events like agent_tool_call, task_start, etc.
+
+        Args:
+            event: The event name to listen for
+
+        Returns:
+            A decorator function
+
+        Example:
+            ```python
+            @workflow.on("agent_tool_call")
+            async def log_tool_call(tool_name: str, tool_args: dict):
+                print(f"Agent called {tool_name} with {tool_args}")
+            ```
+        """
 
         def decorator(func: Callable):
             if event not in self.event_listeners:
@@ -56,19 +110,59 @@ class Workflow:
         inputs: Optional[Dict[str, Any]] = None,
         output_mapping: Optional[Dict[str, str]] = None,  # NEW PARAMETER
     ):
-        """Adds a node (a unit of work) to the workflow."""
+        """
+        Adds a task (node) to the workflow.
+
+        A task represents a unit of work that can be performed by either
+        an agent or a tool. Each task has a unique name and defines how
+        data flows in and out of it.
+
+        Args:
+            name: Unique identifier for this task
+            agent: Optional Agent instance to perform this task
+            tool: Optional tool function to execute
+            instructions: Instructions for agent tasks (required if agent provided)
+            inputs: Input mapping for tool tasks (maps state fields to tool parameters)
+            output_mapping: Maps task output to state fields (e.g., {"result": "output"})
+
+        Raises:
+            ValueError: If task name already exists, or if agent/tool requirements not met
+
+        Example:
+            ```python
+            # Agent task
+            workflow.add_task(
+                name="research",
+                agent=researcher_agent,
+                instructions="Research the topic: {topic}",
+                output_mapping={"research_data": "output"}
+            )
+
+            # Tool task
+            workflow.add_task(
+                name="save_file",
+                tool=write_file,
+                inputs={"filepath": "{output_path}", "content": "{research_data}"},
+                output_mapping={"save_status": "output"}
+            )
+            ```
+        """
         if name in self.tasks:
-            raise ValueError(f"Task '{name}' already exists.")
+            raise TaskConfigurationError(f"Task '{name}' already exists.")
 
         # Validate that either agent or tool is provided, but not both
         if not agent and not tool:
-            raise ValueError(f"Task '{name}' must have either an agent or a tool.")
+            raise TaskConfigurationError(
+                f"Task '{name}' must have either an agent or a tool."
+            )
         if agent and tool:
-            raise ValueError(f"Task '{name}' cannot have both an agent and a tool.")
+            raise TaskConfigurationError(
+                f"Task '{name}' cannot have both an agent and a tool."
+            )
 
         # Validate agent-specific requirements
         if agent and not instructions:
-            raise ValueError(f"Agent task '{name}' must have instructions.")
+            raise TaskConfigurationError(f"Agent task '{name}' must have instructions.")
 
         # Validate tool-specific requirements
         if tool and not inputs:
@@ -89,11 +183,11 @@ class Workflow:
         """Defines a direct connection from one task to another."""
         # Validate that source task exists
         if source not in self.tasks and source != self.END:
-            raise ValueError(f"Source task '{source}' does not exist.")
+            raise WorkflowDefinitionError(f"Source task '{source}' does not exist.")
 
         # Validate that target task exists
         if target not in self.tasks and target != self.END:
-            raise ValueError(f"Target task '{target}' does not exist.")
+            raise WorkflowDefinitionError(f"Target task '{target}' does not exist.")
 
         self.edges.append((source, target))
         console.print(f"  - Edge added: [cyan]{source}[/cyan] -> [cyan]{target}[/cyan]")
@@ -102,12 +196,12 @@ class Workflow:
         """Defines a branching point based on the output of a path function."""
         # Validate that source task exists
         if source not in self.tasks:
-            raise ValueError(f"Source task '{source}' does not exist.")
+            raise WorkflowDefinitionError(f"Source task '{source}' does not exist.")
 
         # Validate that all path targets exist
         for target in paths.values():
             if target not in self.tasks and target != self.END:
-                raise ValueError(f"Path target '{target}' does not exist.")
+                raise WorkflowDefinitionError(f"Path target '{target}' does not exist.")
 
         console.print(f"  - Conditional Edge added from [cyan]{source}[/cyan]")
         # Store this complex edge information for the compiler
@@ -116,7 +210,9 @@ class Workflow:
     def set_entry_point(self, task_name: str):
         """Sets the starting task for the workflow."""
         if task_name not in self.tasks:
-            raise ValueError(f"Entry point task '{task_name}' does not exist.")
+            raise WorkflowDefinitionError(
+                f"Entry point task '{task_name}' does not exist."
+            )
         self.entry_point = task_name
         console.print(f"  - Entry point set to: [cyan]{task_name}[/cyan]")
 

@@ -8,6 +8,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from rich.console import Console
 
+from .exceptions import ExecutionError, StateValidationError, WorkflowDefinitionError
 from .state import State
 from .workflow import Workflow
 
@@ -53,7 +54,7 @@ class GraphCompiler:
                     **state.model_dump()
                 )
             except KeyError as e:
-                raise ValueError(
+                raise StateValidationError(
                     f"Missing state key '{e}' required by task '{task_name}' instructions template."
                 )
 
@@ -202,7 +203,7 @@ class GraphCompiler:
                     for key, template in input_mapping.items()
                 }
             except KeyError as e:
-                raise ValueError(
+                raise StateValidationError(
                     f"Missing state key '{e}' required by tool '{task_name}' input mapping."
                 )
 
@@ -241,7 +242,7 @@ class GraphCompiler:
 
         # 2. Set the entry point (same as before)
         if not self.workflow.entry_point:
-            raise ValueError("Workflow entry point is not set.")
+            raise WorkflowDefinitionError("Workflow entry point is not set.")
         workflow_graph.set_entry_point(self.workflow.entry_point)
 
         # 3. Add edges between nodes (THIS IS THE NEW, UPGRADED LOGIC)

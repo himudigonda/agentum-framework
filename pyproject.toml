@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "agentum"
 version = "1.0.0"
-description = "A Python-native framework for building, orchestrating, and observing multi-agent systems with RAG capabilities."
+description = "A Python-native framework for building, orchestrating, and observing production-ready AI agent systems."
 readme = "README.md"
 authors = [{ name = "Agentum Team", email = "team@agentum.dev" }]
 license = { file = "LICENSE" }
@@ -37,6 +37,7 @@ dependencies = [
     "chromadb>=0.5.0", # A great local-first vector store
     "sentence-transformers>=2.7.0", # For high-quality open-source embeddings
     "graphviz>=0.21",
+    "tavily-python>=0.3.0", # Professional web search API for AI agents
 ]
 
 [project.urls]
@@ -74,10 +75,12 @@ asyncio_mode = "auto"
 [dependency-groups]
 dev = [
     "black>=25.9.0",
+    "build>=1.3.0",
     "pre-commit>=4.3.0",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "ruff>=0.13.2",
+    "twine>=6.2.0",
 ]
 
 [project.scripts]

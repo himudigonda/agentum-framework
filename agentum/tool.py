@@ -8,6 +8,43 @@ from pydantic import create_model
 def tool(func):
     """
     A decorator that marks a Python function as a tool and attaches its schema.
+
+    This decorator transforms any Python function into an agentum tool by:
+    1. Introspecting the function's signature to create a Pydantic schema
+    2. Attaching metadata for the LLM to understand the tool's capabilities
+    3. Preserving the original function's behavior
+
+    The decorated function can then be used by agents in workflows.
+
+    Args:
+        func: The function to convert into a tool
+
+    Returns:
+        The decorated function with tool metadata attached
+
+    Example:
+        ```python
+        @tool
+        def search_web(query: str) -> str:
+            \"\"\"
+            Search the web for information about a given query.
+
+            Args:
+                query: The search query string
+
+            Returns:
+                Search results as a formatted string
+            \"\"\"
+            # Implementation here
+            return results
+
+        # Now this can be used in an agent
+        agent = Agent(
+            name="Researcher",
+            llm=llm,
+            tools=[search_web]
+        )
+        ```
     """
 
     @functools.wraps(func)
