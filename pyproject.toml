@@ -32,6 +32,7 @@ dependencies = [
     "rich>=13.7",
     "typer>=0.12",
     "python-dotenv>=1.1.1",
+    "langchain-google-community>=1.0.4",
     "langchain-google-genai>=2.1.12",
     "redis>=5.0.0",
     "langchain-community>=0.2.0",

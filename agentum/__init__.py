@@ -20,7 +20,13 @@ from .rag import KnowledgeBase
 from .state import State
 from .testing import Evaluator, TestSuite
 from .tool import tool
-from .tools import create_vector_search_tool, read_file, search_web_tavily, write_file
+from .tools import (
+    create_vector_search_tool,
+    read_file,
+    search_web_tavily,
+    transcribe_audio,
+    write_file,
+)
 from .workflow import Workflow
 
 __all__ = [
@@ -39,6 +45,7 @@ __all__ = [
     "search_web_tavily",
     "write_file",
     "read_file",
+    "transcribe_audio",
     "TestSuite",
     "Evaluator",
     # Exceptions
