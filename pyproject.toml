@@ -74,6 +74,10 @@ ignore = ["E501"] # Handled by black
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# MODIFICATION: Add the custom marker
+markers = [
+    "integration: marks tests as integration tests that require API keys",
+]
 
 [dependency-groups]
 dev = [

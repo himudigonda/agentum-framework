@@ -1,0 +1,41 @@
+name: Agentum CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.11", "3.12" ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/uv-setup-action@v1
+      with:
+        uv-version: latest
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run linter and formatter check
+      run: |
+        uv run ruff check .
+        uv run ruff format --check .
+
+    - name: Run Unit and Logic Tests (Skip Integration Tests)
+      # MODIFICATION: We add `-m "not integration"` to exclude tests that need API keys.
+      # The `env` block with secrets has been removed.
+      run: uv run pytest -m "not integration"
