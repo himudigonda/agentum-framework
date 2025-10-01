@@ -4,73 +4,110 @@
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**A Python-native framework for building, orchestrating, and observing production-ready AI agent systems.**
+**A Python-native framework for building, orchestrating, and observing production-ready, multi-modal AI agent systems.**
 
-Agentum provides a clean, developer-centric API to build sophisticated AI workflows that can reason, use tools, access knowledge, and learn from interactions. It abstracts away the complexity of the agentic loop, state management, and observability, letting you focus on your application's logic.
+Agentum provides a clean, developer-centric API to build sophisticated AI workflows that can see, hear, speak, and reason. It abstracts away the complexity of the agentic loop, multi-modal data handling, and state management, letting you focus on your application's logic.
 
 ## 🚀 Key Features
 
-- **🤖 True Agentic Behavior:** Build agents that can autonomously use tools to solve problems through a `think -> act -> observe` loop.
-- **📚 Built-in RAG:** A powerful, easy-to-use `KnowledgeBase` for creating agents that can reason over your own documents and data.
+- **🤖 Multi-Modal Agents:** Build agents that can see, hear, and speak. Natively integrate vision, speech-to-text, and text-to-speech.
+- **🔄 Multi-Provider LLMs:** Swap between Google Gemini, Anthropic Claude, and more with a single line of code, thanks to a provider-agnostic architecture.
+- **🗣️ End-to-End Voice Workflows:** Create complete voice assistants that can listen to a user's request, think, and generate a spoken response.
+- **📚 Advanced RAG:** A powerful, easy-to-use `KnowledgeBase` for creating agents that can reason over your own documents and data.
 - **🔍 Deep Observability:** An event-driven system (`@workflow.on(...)`) to hook into every step of an agent's reasoning process for unparalleled debugging.
-- **🧠 Stateful Memory:** Equip agents with `ConversationMemory` to enable rich, multi-turn conversational applications.
 - **🧪 Professional Testing Harness:** A first-class `TestSuite` and `Evaluator` system to systematically test and score your agents' performance.
-- **🛡️ Production Ready:** Automatic retries, asynchronous core, state persistence via Redis, and a complete CLI for managing your workflows.
+- **🛠️ Powerful CLI:** Validate, visualize, scaffold, and run your agentic workflows directly from the terminal.
 
 ## 📦 Installation
 
 ```bash
 pip install agentum
 ```
-You will also need an LLM provider library, for example:
+You will also need libraries for the specific providers you want to use:
 ```bash
-pip install langchain-google-genai tavily-python
+# For Google (Gemini, Vision, Speech)
+pip install langchain-google-genai google-cloud-texttospeech langchain-google-community
+
+# For Anthropic (Claude)
+pip install langchain-anthropic
+
+# For high-quality web search
+pip install tavily-python
 ```
 
-## 🎯 Quick Start: A RAG-Powered Analyst
+## 🎯 Quick Start: A Voice Assistant in ~40 Lines of Code
 
-In less than 30 lines of code, build an agent that can read a document and answer questions about it.
+Build a complete voice assistant that listens to an audio file, thinks, and speaks a response.
 
 ```python
-# filename: analyst_workflow.py
+# filename: voice_assistant.py
 import os
 from dotenv import load_dotenv
-from agentum import Agent, State, Workflow, GoogleLLM, KnowledgeBase, create_vector_search_tool
+from agentum import Agent, GoogleLLM, State, Workflow, text_to_speech, transcribe_audio
 
 load_dotenv()
 
-# 1. Ingest your data into a KnowledgeBase
-kb = KnowledgeBase(name="company_docs")
-kb.add(sources=["./path/to/your/report.txt"])
+# 1. Define the State for our voice interaction
+class VoiceAssistantState(State):
+    input_audio_path: str
+    output_audio_path: str
+    question_text: str = ""
+    answer_text: str = ""
 
-# 2. Create a RAG-enabled tool and agent
-rag_tool = create_vector_search_tool(kb)
-analyst = Agent(
-    name="DocAnalyst",
-    system_prompt="You are an analyst. Answer questions using only the provided documents.",
+# 2. Define the Agent that will answer the question
+assistant_agent = Agent(
+    name="HelpfulAssistant",
+    system_prompt="You are a friendly assistant. Provide concise answers.",
     llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
-    tools=[rag_tool]
 )
 
-# 3. Define the workflow
-class AnalystState(State):
-    question: str
-    answer: str = ""
+# 3. Define the end-to-end voice workflow
+workflow = Workflow(name="Voice_Assistant", state=VoiceAssistantState)
 
-workflow = Workflow(name="Document_QA", state=AnalystState)
+# Task 1: Listen - Transcribe the input audio to text
 workflow.add_task(
-    name="answer_question",
-    agent=analyst,
-    instructions="Use your tools to find the answer to: {question}",
-    output_mapping={"answer": "output"}
+    name="listen",
+    tool=transcribe_audio,
+    inputs={
+        "audio_filepath": "{input_audio_path}",
+        "project_id": os.getenv("GOOGLE_CLOUD_PROJECT_ID"),
+    },
+    output_mapping={"question_text": "output"},
 )
-workflow.set_entry_point("answer_question")
-workflow.add_edge("answer_question", workflow.END)
 
-# 4. Run it!
+# Task 2: Think - Generate a text answer
+workflow.add_task(
+    name="think",
+    agent=assistant_agent,
+    instructions="Answer this question: {question_text}",
+    output_mapping={"answer_text": "output"},
+)
+
+# Task 3: Speak - Convert the text answer back to an audio file
+workflow.add_task(
+    name="speak",
+    tool=text_to_speech,
+    inputs={
+        "text_to_speak": "{answer_text}",
+        "output_filepath": "{output_audio_path}",
+    },
+)
+
+# 4. Define the control flow
+workflow.set_entry_point("listen")
+workflow.add_edge("listen", "think")
+workflow.add_edge("think", "speak")
+workflow.add_edge("speak", workflow.END)
+
+# 5. Run it!
 if __name__ == "__main__":
-    result = workflow.run({"question": "What was the main driver of growth?"})
-    print(result["answer"])
+    # You'll need a 'request.wav' file for this to work.
+    result = workflow.run({
+        "input_audio_path": "request.wav",
+        "output_audio_path": "response.mp3",
+    })
+    print(f"User asked: '{result['question_text']}'")
+    print(f"Agent responded: '{result['answer_text']}' (Audio saved to response.mp3)")
 ```
 
 ## 🛠️ Powerful CLI
@@ -78,16 +115,16 @@ if __name__ == "__main__":
 Agentum comes with a complete CLI to supercharge your development workflow.
 
 ```bash
-# Run a workflow with an initial state
-agentum run analyst_workflow.py --state '{"question": "What are our new initiatives?"}'
+# Run a workflow with an initial JSON state
+agentum run voice_assistant.py --state '{"input_audio_path": "request.wav", "output_audio_path": "response.mp3"}'
 
 # Validate a workflow's structure without running it
-agentum validate analyst_workflow.py
+agentum validate voice_assistant.py
 
 # Generate a visual graph of your workflow
-agentum graph analyst_workflow.py --output workflow.png
+agentum graph voice_assistant.py --output workflow.png
 
-# Scaffold a new workflow file
+# Scaffold a new workflow file from a template
 agentum init my_new_workflow
 ```
 

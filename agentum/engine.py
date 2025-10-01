@@ -1,6 +1,9 @@
 # agentum/engine.py
 import asyncio
+import base64
 import inspect
+import mimetypes
+from pathlib import Path
 from typing import Any, Dict
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
@@ -58,15 +61,47 @@ class GraphCompiler:
                     f"Missing state key '{e}' required by task '{task_name}' instructions template."
                 )
 
-            # 2. Construct the message content, checking for an image
+            # --- UPGRADED MULTI-MODAL LOGIC ---
+            # 2. Construct the message content, checking for URL or local path
             prompt_text = f"{agent.system_prompt}\n\n{formatted_instructions}"
             message_content = [{"type": "text", "text": prompt_text}]
 
-            # If the state has an 'image_url' attribute and it's populated,
-            # we automatically create a multi-modal message.
-            if hasattr(state, "image_url") and getattr(state, "image_url"):
+            # Priority 1: Check for a local image path
+            if hasattr(state, "image_path") and getattr(state, "image_path"):
+                image_path_str = getattr(state, "image_path")
+                image_path = Path(image_path_str)
+                if image_path.exists():
+                    console.print(
+                        f"    - Attaching local image for analysis: {image_path_str}"
+                    )
+                    # Read image, encode to base64, and determine MIME type
+                    mime_type, _ = mimetypes.guess_type(image_path)
+                    if mime_type:
+                        with open(image_path, "rb") as image_file:
+                            base64_image = base64.b64encode(image_file.read()).decode(
+                                "utf-8"
+                            )
+                        message_content.append(
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{base64_image}"
+                                },
+                            }
+                        )
+                    else:
+                        console.print(
+                            f"[yellow]Warning: Could not determine MIME type for {image_path_str}. Skipping image.[/yellow]"
+                        )
+                else:
+                    console.print(
+                        f"[yellow]Warning: Image file not found at {image_path_str}. Skipping image.[/yellow]"
+                    )
+
+            # Priority 2: Check for an image URL (if no local path was used)
+            elif hasattr(state, "image_url") and getattr(state, "image_url"):
                 image_url = getattr(state, "image_url")
-                console.print(f"    - Attaching image for analysis: {image_url}")
+                console.print(f"    - Attaching remote image for analysis: {image_url}")
                 message_content.append(
                     {
                         "type": "image_url",
@@ -75,6 +110,7 @@ class GraphCompiler:
                 )
 
             human_message = HumanMessage(content=message_content)
+            # --- END OF UPGRADED LOGIC ---
 
             # --- NEW MEMORY LOGIC ---
             messages = []

@@ -24,7 +24,7 @@ class VisionState(State):
 visual_analyst = Agent(
     name="VisualAnalyst",
     system_prompt="You are an expert at analyzing images and describing what you see in detail. You answer questions based on the provided image.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
 )
 
 vision_workflow = Workflow(name="Image_Analysis_Workflow", state=VisionState)

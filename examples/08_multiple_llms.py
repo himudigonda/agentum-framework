@@ -1,13 +1,18 @@
 """
 Demonstrates Agentum's extensible provider architecture.
 Switch between different LLM providers with a single line change.
+
+To run this example:
+1. Make sure you have the necessary API key set in your .env file
+   (e.g., GOOGLE_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY).
+2. Uncomment the provider you wish to use.
 """
 
 import os
 
 from dotenv import load_dotenv
 
-from agentum import Agent, AnthropicLLM, GoogleLLM, State, Workflow
+from agentum import Agent, AnthropicLLM, GoogleLLM, OpenAILLM, State, Workflow
 
 load_dotenv()
 
@@ -18,14 +23,24 @@ class StoryState(State):
 
 
 # Choose your LLM Provider
-llm_provider = AnthropicLLM(
-    api_key=os.getenv("ANTHROPIC_API_KEY"),
+# ---------------------------
+
+# Option A: Use Google Gemini (Default)
+llm_provider = GoogleLLM(
+    api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.8,
+    model="gemini-2.5-flash-lite",
 )
 
-# Alternative: Use Google Gemini 2.5 Flash
-# llm_provider = GoogleLLM(
-#     api_key=os.getenv("GOOGLE_API_KEY"),
+# Option B: Use Anthropic Claude 3.5 Sonnet (uncomment to switch)
+# llm_provider = AnthropicLLM(
+#     api_key=os.getenv("ANTHROPIC_API_KEY"),
+#     temperature=0.8,
+# )
+
+# Option C: Use OpenAI GPT-4o-mini (uncomment to switch)
+# llm_provider = OpenAILLM(
+#     api_key=os.getenv("OPENAI_API_KEY"),
 #     temperature=0.8,
 # )
 

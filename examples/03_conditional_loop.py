@@ -17,7 +17,7 @@ class EditorState(State):
 
 
 # 2. Define real agents
-llm = GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"))
+llm = GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite")
 editor = Agent(
     name="Editor",
     system_prompt="You are a creative editor. You rewrite text based on feedback.",

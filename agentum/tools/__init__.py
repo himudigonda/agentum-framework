@@ -1,4 +1,10 @@
-from .builtins import read_file, search_web_tavily, transcribe_audio, write_file
+from .builtins import (
+    read_file,
+    search_web_tavily,
+    text_to_speech,
+    transcribe_audio,
+    write_file,
+)
 from .retrievers import create_vector_search_tool
 
 __all__ = [
@@ -7,4 +13,5 @@ __all__ = [
     "write_file",
     "read_file",
     "transcribe_audio",
+    "text_to_speech",
 ]

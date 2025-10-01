@@ -53,7 +53,7 @@ class ResearchReportState(State):
 researcher_agent = Agent(
     name="Researcher",
     system_prompt="You are an expert researcher. Your job is to use the search tool to find comprehensive, up-to-date information on a topic and then synthesize it into a coherent summary.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
     tools=[search_web_tavily],  # Real web search capability
 )
 
@@ -62,7 +62,7 @@ researcher_agent = Agent(
 writer_agent = Agent(
     name="Writer",
     system_prompt="You are a professional writer. Your job is to format research data into a well-structured markdown report.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
     # No tools needed - this agent focuses purely on content formatting
 )
 

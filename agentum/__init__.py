@@ -15,7 +15,7 @@ from .exceptions import (
 )
 from .memory import ConversationMemory
 from .messages import AIMessage, HumanMessage, ToolMessage
-from .providers import AnthropicLLM, GoogleLLM
+from .providers import AnthropicLLM, GoogleLLM, OpenAILLM
 from .rag import KnowledgeBase
 from .state import State
 from .testing import Evaluator, TestSuite
@@ -24,6 +24,7 @@ from .tools import (
     create_vector_search_tool,
     read_file,
     search_web_tavily,
+    text_to_speech,
     transcribe_audio,
     write_file,
 )
@@ -36,6 +37,7 @@ __all__ = [
     "Workflow",
     "GoogleLLM",
     "AnthropicLLM",
+    "OpenAILLM",
     "AIMessage",
     "HumanMessage",
     "ToolMessage",
@@ -46,6 +48,7 @@ __all__ = [
     "write_file",
     "read_file",
     "transcribe_audio",
+    "text_to_speech",
     "TestSuite",
     "Evaluator",
     # Exceptions

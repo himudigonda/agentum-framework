@@ -40,7 +40,7 @@ class VoiceRequestState(State):
 researcher = Agent(
     name="VoiceResearcher",
     system_prompt="You are a helpful assistant. You first understand a user's request by transcribing it, then you search the web to find an answer.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
     tools=[search_web_tavily, transcribe_audio],
 )
 

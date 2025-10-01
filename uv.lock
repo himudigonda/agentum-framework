@@ -13,6 +13,7 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
+    { name = "google-cloud-texttospeech" },
     { name = "graphviz" },
     { name = "langchain-anthropic" },
     { name = "langchain-community" },
@@ -54,6 +55,7 @@ dev = [
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0" },
     { name = "chromadb", specifier = ">=0.5.0" },
+    { name = "google-cloud-texttospeech", specifier = ">=2.16.2" },
     { name = "graphviz", specifier = ">=0.21" },
     { name = "langchain-anthropic", specifier = ">=0.1" },
     { name = "langchain-community", specifier = ">=0.2.0" },
@@ -893,6 +895,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/58/ab/414e0dc60331d19dde1c751f13829e732d3e1349ea9bdcc8fb9b375b7b6b/google_cloud_modelarmor-0.2.8.tar.gz", hash = "sha256:8e06edb0c0d063509733c9612a85142b42897d31b548cca76b4f4d5323b7aae5", size = 152573, upload-time = "2025-08-06T11:52:17.877Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/71/1b/5b572a5d35342c19b24ea80268367aeba237c9ea842b96a078889ad90812/google_cloud_modelarmor-0.2.8-py3-none-any.whl", hash = "sha256:4141ce1437f15f20a758c8d53e0ecaa91e60b5045dc66d94a8f4076b588c194b", size = 133777, upload-time = "2025-08-06T11:51:51.069Z" },
+]
+
+[[package]]
+name = "google-cloud-texttospeech"
+version = "2.31.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ec/4b/7ccadbec28ee255a3176c3de0a14705c4b6469777f1c7ddbf4452fa893e3/google_cloud_texttospeech-2.31.0.tar.gz", hash = "sha256:1f0c0c6448f175e1e2f63d96fb13af5d9abee6970bbb22c1e4036f53136a5588", size = 184880, upload-time = "2025-09-25T14:03:22.786Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/3e/54ff1a5af26f90c5d76e7e80b9208f8484035b5bd8fb6a06c819fed6a8c9/google_cloud_texttospeech-2.31.0-py3-none-any.whl", hash = "sha256:9442134b4b8e7e3d179dfd3850a5a953a6a6a9cf000a3640caddb85cf97ab69b", size = 191280, upload-time = "2025-09-25T14:03:16.667Z" },
 ]
 
 [[package]]

@@ -1,7 +1,16 @@
 # examples/06_advanced_rag.py
 import os
+
 from dotenv import load_dotenv
-from agentum import Agent, State, Workflow, GoogleLLM, KnowledgeBase, create_vector_search_tool
+
+from agentum import (
+    Agent,
+    GoogleLLM,
+    KnowledgeBase,
+    State,
+    Workflow,
+    create_vector_search_tool,
+)
 
 load_dotenv()
 
@@ -10,6 +19,7 @@ print("--- Creating Knowledge Base ---")
 company_kb = KnowledgeBase(name="company_reports")
 company_kb.add(sources=["examples/earnings_report.txt"])
 print("---------------------------\n")
+
 
 # 2. DEFINE STATE
 class AnalystState(State):
@@ -24,7 +34,7 @@ vector_search_tool = create_vector_search_tool(company_kb)
 analyst = Agent(
     name="FinancialAnalyst",
     system_prompt="You are an expert financial analyst. You must answer questions using only the information found by your tools.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
     tools=[vector_search_tool],
 )
 
