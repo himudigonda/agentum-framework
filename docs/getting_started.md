@@ -1,184 +1,112 @@
 # Getting Started with Agentum
 
-This guide will walk you through building your first agentic workflow with Agentum.
+This guide will walk you through building your first real-world agentic workflow: a professional research assistant that can search the web and then write a structured report.
 
 ## Prerequisites
 
 - Python 3.11+
-- A Google API key (for the examples)
+- API keys for Google and Tavily Search, stored in a `.env` file (`GOOGLE_API_KEY="..."`, `TAVILY_API_KEY="..."`).
 
 ## Installation
 
 ```bash
-pip install agentum
+pip install agentum langchain-google-genai tavily-python
 ```
 
-## Your First Workflow
+## Your First Multi-Agent Workflow
 
-Let's build a simple research assistant that can search the web and summarize findings.
+Let's build a research pipeline that uses two specialist agents: a Researcher and a Writer.
 
-### Step 1: Define a Tool
+### Step 1: Define State
 
-```python
-from agentum import tool
-
-@tool
-def search_web(query: str) -> str:
-    """Search the web for information about a topic."""
-    # In a real implementation, this would call a search API
-    return f"Search results for '{query}': Found 5 relevant articles about the topic."
-
-@tool
-def summarize_text(text: str) -> str:
-    """Summarize a long text into key points."""
-    return f"Summary: {text[:100]}..."
-```
-
-### Step 2: Define State
+The `State` defines the data that flows through your workflow. It's the "memory" that tasks share.
 
 ```python
 from agentum import State
 
-class ResearchState(State):
-    topic: str
-    search_results: str = ""
-    summary: str = ""
+class ReportState(State):
+    topic: str              # The initial input
+    research_data: str = "" # The output of the Researcher
+    report: str = ""        # The final output of the Writer
 ```
 
-### Step 3: Create an Agent
+### Step 2: Create Your Agents
+
+We'll create two agents, each with a specific role and the right tools for their job.
 
 ```python
-from agentum import Agent, GoogleLLM
 import os
+from dotenv import load_dotenv
+from agentum import Agent, GoogleLLM, search_web_tavily
 
+load_dotenv()
+
+# The Researcher uses a real web search tool.
 researcher = Agent(
     name="Researcher",
-    system_prompt="You are a research assistant. Use available tools to gather and summarize information.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
-    tools=[search_web, summarize_text]
+    system_prompt="You are an expert researcher. Find comprehensive, up-to-date information on a topic and synthesize it into a coherent summary.",
+    llm=GoogleLLM(model="gemini-2.5-flash-lite", api_key=os.getenv("GOOGLE_API_KEY")),
+    tools=[search_web_tavily]
+)
+
+# The Writer has no tools; its only job is to format text.
+writer = Agent(
+    name="Writer",
+    system_prompt="You are a professional writer. Your job is to format research data into a well-structured markdown report with a title and key sections.",
+    llm=GoogleLLM(model="gemini-2.5-flash-lite", api_key=os.getenv("GOOGLE_API_KEY"))
 )
 ```
 
-### Step 4: Build the Workflow
+### Step 3: Build the Workflow
+
+The `Workflow` orchestrates the agents and defines how data moves between them.
 
 ```python
 from agentum import Workflow
 
-workflow = Workflow(name="Research_Pipeline", state=ResearchState)
+workflow = Workflow(name="Research_Pipeline", state=ReportState)
 
-# Add tasks
+# Task 1: The Researcher agent gathers information.
+# The output is mapped to the 'research_data' field in our state.
 workflow.add_task(
-    name="search",
+    name="conduct_research",
     agent=researcher,
-    instructions="Search for information about: {topic}",
-    output_mapping={"search_results": "output"}
+    instructions="Perform a thorough web search for the topic: {topic}",
+    output_mapping={"research_data": "output"}
 )
 
+# Task 2: The Writer agent takes the research and formats it.
+# The '{research_data}' input comes directly from the state, filled by the previous task.
 workflow.add_task(
-    name="summarize", 
-    agent=researcher,
-    instructions="Summarize these search results: {search_results}",
-    output_mapping={"summary": "output"}
+    name="write_report",
+    agent=writer,
+    instructions="Format this research data into a report: {research_data}",
+    output_mapping={"report": "output"}
 )
 
-# Set up the flow
-workflow.set_entry_point("search")
-workflow.add_edge("search", "summarize")
-workflow.add_edge("summarize", workflow.END)
+# Define the control flow: research -> write -> end.
+workflow.set_entry_point("conduct_research")
+workflow.add_edge("conduct_research", "write_report")
+workflow.add_edge("write_report", workflow.END)
 ```
 
-### Step 5: Run the Workflow
+### Step 4: Run the Workflow
+
+Now, execute the pipeline and see the final result.
 
 ```python
-# Execute the workflow
-result = workflow.run({"topic": "artificial intelligence"})
+if __name__ == "__main__":
+    initial_state = {"topic": "The future of autonomous vehicles"}
+    final_state = workflow.run(initial_state)
 
-print("Search Results:", result["search_results"])
-print("Summary:", result["summary"])
+    print("\n--- FINAL REPORT ---")
+    print(final_state["report"])
 ```
 
-## Understanding the Output
-
-When you run this workflow, you'll see:
-
-1. **Tool Binding**: The agent learns about available tools
-2. **Autonomous Tool Usage**: The agent decides to call `search_web`
-3. **Tool Execution**: The search tool runs with the topic
-4. **State Updates**: Results flow through the workflow
-5. **Final Summary**: The agent summarizes the findings
+You've just built a multi-agent workflow that performs a real-world task!
 
 ## Next Steps
 
-- [Learn about Agents](concepts/agent.md)
-- [Explore Workflows](concepts/workflow.md)
-- [Add Observability](features/observability.md)
-- [Enable Memory](features/memory.md)
-- [Build Tests](features/testing.md)
-
-## Common Patterns
-
-### Conditional Logic
-
-```python
-def should_continue(state: ResearchState) -> str:
-    if len(state.search_results) > 100:
-        return "continue"
-    return "stop"
-
-workflow.add_conditional_edges(
-    source="search",
-    path=should_continue,
-    paths={"continue": "summarize", "stop": workflow.END}
-)
-```
-
-### Event Handling
-
-```python
-@workflow.on("agent_tool_call")
-async def on_tool_call(tool_name: str, tool_args: dict):
-    print(f"Agent called {tool_name} with {tool_args}")
-
-@workflow.on("agent_end")
-async def on_agent_end(agent_name: str, final_response: str):
-    print(f"{agent_name} finished: {len(final_response)} chars")
-```
-
-### Memory-Enabled Agents
-
-```python
-from agentum import ConversationMemory
-
-agent = Agent(
-    name="ChatBot",
-    system_prompt="You are a helpful assistant.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
-    memory=ConversationMemory()  # Enable memory
-)
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Missing API Key**: Ensure your Google API key is set in environment variables
-2. **Tool Not Found**: Check that tools are properly decorated with `@tool`
-3. **State Key Error**: Verify output mappings match your state fields
-
-### Debug Mode
-
-Enable detailed logging:
-
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
-
-## Ready for More?
-
-You've built your first agentic workflow! Now explore the advanced features:
-
-- [Observability](features/observability.md) - Monitor and debug your workflows
-- [Memory](features/memory.md) - Build stateful conversations
-- [Testing](features/testing.md) - Ensure quality with automated testing
-- [Streaming](features/streaming.md) - Real-time workflow execution
+- [Explore LLM Providers](features/providers.md) - Swap models from Google, Anthropic, and OpenAI.
+- [Add Vision & Speech](features/multi_modality.md) - Build agents that can see, hear, and speak.
+- [Master Advanced RAG](features/advanced_rag.md) - Use rerankers for high-precision search.

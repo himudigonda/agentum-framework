@@ -130,10 +130,13 @@ agentum init my_new_workflow
 
 ## 📖 Documentation
 
-- **[Getting Started Guide](docs/getting_started.md)** - Your first steps with Agentum.
+- **[Getting Started Guide](docs/getting_started.md)** - Build your first multi-agent workflow with real tools.
+- **[LLM Providers](docs/features/providers.md)** - Switch between Google, Anthropic, and OpenAI models.
+- **[Multi-Modal Capabilities](docs/features/multi_modality.md)** - Add vision support for images and local files.
+- **[Advanced RAG](docs/features/advanced_rag.md)** - Use rerankers for high-precision document retrieval.
+- **[Speech Capabilities](docs/features/speech.md)** - Build voice assistants with STT and TTS.
 - **[Core Concepts](docs/concepts/)** - Deep dive into Agents, State, and Workflows.
-- **[Advanced Features](docs/features/)** - Learn about RAG, Observability, Memory, and Testing.
-- **[Examples](examples/)** - Explore a rich set of real-world examples.
+- **[Examples](examples/)** - Explore 14 real-world examples showcasing all features.
 
 ## 🤝 Contributing
 
