@@ -1,95 +1,116 @@
 # Agentum Framework
 
-A Python-native framework for building, orchestrating, and observing multi-agent systems.
+A Python-native framework for building, orchestrating, and observing production-ready, multi-modal AI agent systems.
 
 ## 🚀 Quick Start
 
 ```python
-from agentum import Agent, State, Workflow, tool, GoogleLLM
-
-# Define a tool
-@tool
-def get_weather(city: str) -> str:
-    """Get current weather for a city."""
-    return f"Weather in {city}: 72°F and sunny"
+from agentum import Agent, State, Workflow, GoogleLLM, search_web_tavily
 
 # Define state
-class TravelState(State):
-    request: str
-    plan: str = ""
+class ResearchState(State):
+    topic: str
+    research: str = ""
+    report: str = ""
 
-# Create agent
-agent = Agent(
-    name="TravelPlanner",
-    system_prompt="You are a helpful travel assistant.",
+# Create agents
+researcher = Agent(
+    name="Researcher",
+    system_prompt="You are an expert researcher.",
     llm=GoogleLLM(api_key="your-api-key"),
-    tools=[get_weather]
+    tools=[search_web_tavily]
+)
+
+writer = Agent(
+    name="Writer", 
+    system_prompt="You are a professional writer.",
+    llm=GoogleLLM(api_key="your-api-key")
 )
 
 # Create workflow
-workflow = Workflow(name="Travel_Planner", state=TravelState)
+workflow = Workflow(name="Research_Pipeline", state=ResearchState)
 workflow.add_task(
-    name="create_plan",
-    agent=agent,
-    instructions="Create a travel plan: {request}",
-    output_mapping={"plan": "output"}
+    name="research",
+    agent=researcher,
+    instructions="Research: {topic}",
+    output_mapping={"research": "output"}
 )
-workflow.set_entry_point("create_plan")
+workflow.add_task(
+    name="write",
+    agent=writer,
+    instructions="Write report: {research}",
+    output_mapping={"report": "output"}
+)
+
+workflow.set_entry_point("research")
+workflow.add_edge("research", "write")
 
 # Run it
-result = workflow.run({"request": "Plan a trip to San Francisco"})
-print(result["plan"])
+result = workflow.run({"topic": "The future of AI"})
+print(result["report"])
 ```
 
 ## 📚 Documentation
 
-- [Getting Started](getting_started.md) - Detailed tutorial for new users
-- [Concepts](concepts/) - Core framework concepts
-- [Features](features/) - Advanced features and capabilities
-- [Examples](examples/) - Complete working examples
+### Getting Started
+- [Getting Started Guide](getting_started.md) - Build your first multi-agent workflow with real tools
+
+### Core Features
+- [LLM Providers](features/providers.md) - Switch between Google, Anthropic, and OpenAI models
+- [Multi-Modal Capabilities](features/multi_modality.md) - Add vision support for images and local files
+- [Advanced RAG](features/advanced_rag.md) - Use rerankers for high-precision document retrieval
+- [Speech Capabilities](features/speech.md) - Build voice assistants with STT and TTS
+
+### Core Concepts
+- [Concepts](concepts/) - Deep dive into Agents, State, and Workflows
+- [Examples](../examples/) - Explore 14 real-world examples showcasing all features
 
 ## 🎯 Key Features
 
-- **🔄 True Agentic Behavior**: Agents autonomously use tools to solve problems
-- **🔍 Complete Observability**: Event-driven debugging and monitoring
-- **🧠 Stateful Conversations**: Memory-enabled agents for multi-turn interactions
-- **🧪 Professional Testing**: Automated evaluation and regression testing
-- **🛡️ Production Ready**: Retry logic, streaming, and state persistence
-- **🎨 Excellent DX**: Clean API with powerful capabilities
+- **🤖 Multi-Modal Agents**: Build agents that can see, hear, and speak
+- **🔄 Multi-Provider LLMs**: Swap between Google Gemini, Anthropic Claude, and OpenAI GPT
+- **🗣️ End-to-End Voice Workflows**: Complete voice assistants that listen, think, and speak
+- **📚 Advanced RAG**: KnowledgeBase with cross-encoder reranking for high-precision retrieval
+- **🔍 Deep Observability**: Event-driven system for comprehensive debugging
+- **🧪 Professional Testing**: TestSuite and Evaluator for systematic quality assurance
+- **🛠️ Powerful CLI**: Validate, visualize, and run workflows from the terminal
 
 ## 🏗️ Architecture
 
 Agentum is built on top of LangGraph and provides:
 
-- **Workflow**: Declarative workflow definition
-- **Agent**: AI agents with tools and memory
-- **State**: Type-safe state management
-- **Events**: Comprehensive observability
-- **Testing**: Built-in evaluation framework
-
-## 📖 Learn More
-
-- [Concepts Overview](concepts/index.md)
-- [Agent Guide](concepts/agent.md)
-- [Workflow Guide](concepts/workflow.md)
-- [State Management](concepts/state.md)
-- [Tool System](concepts/tool.md)
-
-## 🔧 Advanced Features
-
-- [Observability](features/observability.md) - Event system and debugging
-- [Memory](features/memory.md) - Stateful agent conversations
-- [Testing](features/testing.md) - Evaluation and test suites
-- [Streaming](features/streaming.md) - Real-time workflow execution
-- [Persistence](features/persistence.md) - State checkpointing
+- **Workflow**: Declarative workflow definition with multi-agent orchestration
+- **Agent**: AI agents with tools, memory, and multi-modal capabilities
+- **State**: Type-safe state management with multi-modal data support
+- **Events**: Comprehensive observability and debugging
+- **Testing**: Built-in evaluation framework with mock LLMs
+- **Providers**: Extensible LLM provider architecture
 
 ## 🚀 Examples
 
-- [Basic Workflow](examples/basic.md) - Simple agent task
-- [Tool Usage](examples/tools.md) - Agent with tools
-- [Conditional Logic](examples/conditionals.md) - Complex workflows
-- [True Agency](examples/agency.md) - Autonomous tool usage
-- [Testing & Evaluation](examples/testing.md) - Quality assurance
+### Basic Examples
+- [Hello Agentum](../examples/01_hello_agentum.py) - Simple agent workflow
+- [Tool Usage](../examples/02_simple_tool_usage.py) - Agent with real web search
+- [Conditional Logic](../examples/03_conditional_loop.py) - Complex workflow control
+
+### Advanced Examples
+- [True Agency](../examples/04_true_agency.py) - Autonomous tool usage
+- [Testing & Evaluation](../examples/05_testing_and_evaluation.py) - Quality assurance
+- [Advanced RAG](../examples/06_advanced_rag.py) - Document retrieval
+- [Professional Research](../examples/07_professional_research.py) - Multi-agent research
+
+### Multi-Provider Examples
+- [Multiple LLMs](../examples/08_multiple_llms.py) - Switch between providers
+- [Vision Analysis](../examples/09_vision_analysis.py) - Image analysis with URLs
+- [Advanced Demo](../examples/10_advanced_demo.py) - Comprehensive showcase
+
+### Speech Examples
+- [Speech-to-Text](../examples/11_speech_to_text.py) - Audio transcription
+- [Voice Assistant](../examples/12_voice_assistant.py) - Complete voice workflow
+
+### Advanced Features
+- [RAG with Reranking](../examples/13_advanced_rag_reranking.py) - High-precision retrieval
+- [Local Image Analysis](../examples/14_local_image_analysis.py) - Local file processing
 
 ## 🤝 Contributing
 
@@ -97,4 +118,4 @@ We welcome contributions! Please see our [Contributing Guide](contributing.md) f
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](../LICENSE) for details.

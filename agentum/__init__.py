@@ -13,14 +13,21 @@ from .exceptions import (
     ToolError,
     WorkflowDefinitionError,
 )
-from .llm_providers import GoogleLLM
 from .memory import ConversationMemory
 from .messages import AIMessage, HumanMessage, ToolMessage
+from .providers import AnthropicLLM, GoogleLLM, OpenAILLM
 from .rag import KnowledgeBase
 from .state import State
 from .testing import Evaluator, TestSuite
 from .tool import tool
-from .tools import create_vector_search_tool, read_file, search_web_tavily, write_file
+from .tools import (
+    create_vector_search_tool,
+    read_file,
+    search_web_tavily,
+    text_to_speech,
+    transcribe_audio,
+    write_file,
+)
 from .workflow import Workflow
 
 __all__ = [
@@ -29,6 +36,8 @@ __all__ = [
     "tool",
     "Workflow",
     "GoogleLLM",
+    "AnthropicLLM",
+    "OpenAILLM",
     "AIMessage",
     "HumanMessage",
     "ToolMessage",
@@ -38,6 +47,8 @@ __all__ = [
     "search_web_tavily",
     "write_file",
     "read_file",
+    "transcribe_audio",
+    "text_to_speech",
     "TestSuite",
     "Evaluator",
     # Exceptions

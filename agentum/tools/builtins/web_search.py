@@ -1,9 +1,10 @@
 # agentum/tools/builtins/web_search.py
-import os
-
 from tavily import TavilyClient
 
 from agentum import tool
+
+# MODIFICATION: Import settings
+from agentum.config import settings
 
 
 @tool
@@ -13,7 +14,8 @@ def search_web_tavily(query: str) -> str:
     This is a real, high-quality search tool optimized for AI agents.
     """
     try:
-        api_key = os.getenv("TAVILY_API_KEY")
+        # MODIFICATION: Use centralized settings
+        api_key = settings.TAVILY_API_KEY
         if not api_key:
             return "Error: TAVILY_API_KEY environment variable is not set."
 

@@ -31,7 +31,7 @@ class TravelState(State):
 travel_agent = Agent(
     name="TravelPlanner",
     system_prompt="You are a helpful travel assistant. You create simple, bulleted travel plans. When creating packing recommendations, always check the weather for the destination to provide accurate advice.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
     tools=[get_weather],  # Crucially, the agent is GIVEN the tool.
 )
 
@@ -65,4 +65,6 @@ if __name__ == "__main__":
         print("\n✅ Agent successfully used the weather tool to complete its task!")
     else:
         print("\n⚠️  Agent provided a plan but may not have used the weather tool.")
-        print("This demonstrates the autonomous nature - agents decide when to use tools.")
+        print(
+            "This demonstrates the autonomous nature - agents decide when to use tools."
+        )

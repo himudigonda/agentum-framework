@@ -6,6 +6,7 @@ import pytest
 
 from agentum import Agent, GoogleLLM, State, Workflow, tool
 from agentum.engine import GraphCompiler
+from tests.mock_llm import MockLLM, MockAsyncLLM
 
 
 class TestState(State):
@@ -28,7 +29,7 @@ class TestEngine:
         compiler = GraphCompiler(workflow)
 
         agent = Agent(
-            name="TestAgent", system_prompt="You are a test agent.", llm=MagicMock()
+            name="TestAgent", system_prompt="You are a test agent.", llm=MockLLM()
         )
 
         task_details = {
@@ -52,7 +53,7 @@ class TestEngine:
         agent = Agent(
             name="TestAgent",
             system_prompt="You are a test agent.",
-            llm=MagicMock(),
+            llm=MockLLM(),
             tools=[test_tool],
         )
 
@@ -93,8 +94,8 @@ class TestEngine:
         mock_response.content = "Test response"
         mock_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.return_value = mock_response
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.return_value = mock_response
 
         agent = Agent(
             name="TestAgent", system_prompt="You are a test agent.", llm=mock_llm
@@ -139,9 +140,9 @@ class TestEngine:
         final_response.content = "Final response"
         final_response.tool_calls = []
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = [tool_call_response, final_response]
-        mock_llm.bind_tools = MagicMock(return_value=mock_llm)
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = [tool_call_response, final_response]
+        mock_llm.bind_tools_mock.return_value = mock_llm
 
         agent = Agent(
             name="TestAgent",
@@ -200,8 +201,8 @@ class TestEngine:
         workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = [
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = [
             Exception("Network error"),
             Exception("Rate limit"),
             MagicMock(content="Success response", tool_calls=[]),
@@ -238,8 +239,8 @@ class TestEngine:
         workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
 
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke.side_effect = Exception("Persistent error")
+        mock_llm = MockAsyncLLM()
+        mock_llm.ainvoke_mock.side_effect = Exception("Persistent error")
 
         agent = Agent(
             name="TestAgent",
@@ -272,7 +273,7 @@ class TestEngine:
         # Add a task
         workflow.add_task(
             name="test_task",
-            agent=Agent(name="TestAgent", system_prompt="Test", llm=MagicMock()),
+            agent=Agent(name="TestAgent", system_prompt="Test", llm=MockLLM()),
             instructions="Process: {input}",
             output_mapping={"output": "output"},
         )
@@ -292,14 +293,14 @@ class TestEngine:
         # Add tasks
         workflow.add_task(
             name="task1",
-            agent=Agent(name="TestAgent", system_prompt="Test", llm=MagicMock()),
+            agent=Agent(name="TestAgent", system_prompt="Test", llm=MockLLM()),
             instructions="Process: {input}",
             output_mapping={"output": "output"},
         )
 
         workflow.add_task(
             name="task2",
-            agent=Agent(name="TestAgent2", system_prompt="Test2", llm=MagicMock()),
+            agent=Agent(name="TestAgent2", system_prompt="Test2", llm=MockLLM()),
             instructions="Process: {input}",
             output_mapping={"output": "output"},
         )

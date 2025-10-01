@@ -3,6 +3,8 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from .providers.base import BaseLLM
+
 
 class Agent(BaseModel):
     """
@@ -35,8 +37,7 @@ class Agent(BaseModel):
 
     name: str
     system_prompt: str
-    llm: Any  # For now, we'll keep this generic.
-    tools: Optional[List[Any]] = None  # Changed from callable to Any
-    memory: Optional[Any] = None  # NEW: memory support
-    max_retries: int = 3  # NEW: Default to 3 retries
-    # Future additions: structured_output
+    llm: BaseLLM
+    tools: Optional[List[Any]] = None
+    memory: Optional[Any] = None
+    max_retries: int = 3

@@ -25,19 +25,24 @@ keywords = ["ai", "multi-agent", "workflow", "orchestration", "llm", "agents", "
 # --- Core Dependencies ---
 dependencies = [
     "pydantic>=2.7",
+    # MODIFICATION: Add dependency for settings management
+    "pydantic-settings>=2.3.4",
     "langchain-core>=0.3",
+    "langchain-anthropic>=0.1", 
     "langchain-openai>=0.1",
     "langgraph>=0.0.47",
-    "rich>=13.7", # For beautiful logging
-    "typer>=0.12", # For a future CLI
+    "rich>=13.7",
+    "typer>=0.12",
     "python-dotenv>=1.1.1",
+    "google-cloud-texttospeech>=2.16.2",
+    "langchain-google-community>=1.0.4",
     "langchain-google-genai>=2.1.12",
-    "redis>=5.0.0", # For state persistence
-    "langchain-community>=0.2.0", # For document loaders and splitters
-    "chromadb>=0.5.0", # A great local-first vector store
-    "sentence-transformers>=2.7.0", # For high-quality open-source embeddings
+    "redis>=5.0.0",
+    "langchain-community>=0.2.0",
+    "chromadb>=0.5.0",
+    "sentence-transformers>=2.7.0",
     "graphviz>=0.21",
-    "tavily-python>=0.3.0", # Professional web search API for AI agents
+    "tavily-python>=0.3.0",
 ]
 
 [project.urls]
@@ -71,6 +76,10 @@ ignore = ["E501"] # Handled by black
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# MODIFICATION: Add the custom marker
+markers = [
+    "integration: marks tests as integration tests that require API keys",
+]
 
 [dependency-groups]
 dev = [

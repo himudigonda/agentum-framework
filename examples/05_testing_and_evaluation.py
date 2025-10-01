@@ -35,7 +35,7 @@ class TravelState(State):
 travel_agent = Agent(
     name="TravelPlanner",
     system_prompt="You are a helpful travel assistant. You create detailed, bulleted travel plans. When creating packing recommendations, always check the weather for the destination to provide accurate advice.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
     tools=[get_weather],
     memory=ConversationMemory(),  # Enable memory for stateful conversations
 )
@@ -59,7 +59,9 @@ quality_evaluator = Evaluator(
     evaluator_agent=Agent(
         name="QualityEvaluator",
         system_prompt="You are a quality evaluator for travel plans. Rate the quality of travel plans on a scale of 1-10.",
-        llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+        llm=GoogleLLM(
+            api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"
+        ),
     ),
     instructions="Rate the quality of this travel plan on a scale of 1-10. Consider completeness, practicality, and weather awareness. Travel plan: {plan}",
 )
@@ -69,7 +71,9 @@ weather_evaluator = Evaluator(
     evaluator_agent=Agent(
         name="WeatherEvaluator",
         system_prompt="You are a weather awareness evaluator. Check if travel plans properly consider weather conditions.",
-        llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+        llm=GoogleLLM(
+            api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"
+        ),
     ),
     instructions="Does this travel plan properly consider weather conditions? Answer 'YES' if weather is mentioned and incorporated, 'NO' otherwise. Travel plan: {plan}",
 )
