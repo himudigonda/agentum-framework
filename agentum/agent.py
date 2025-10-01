@@ -41,3 +41,11 @@ class Agent(BaseModel):
     tools: Optional[List[Any]] = None
     memory: Optional[Any] = None
     max_retries: int = 3
+
+    def append_message_for_search(self, message: Any):
+        """
+        Helper method to allow the engine to stage a message for memories
+        that require a search context (like VectorStoreMemory).
+        """
+        if hasattr(self.memory, "append_message_for_search"):
+            self.memory.append_message_for_search(message)

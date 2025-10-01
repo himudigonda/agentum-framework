@@ -42,13 +42,11 @@ class TestState(State):
     intermediate_result: str = ""
 
 
-# MODIFICATION: The entire class will be marked as integration
 @pytest.mark.integration
 class TestFramework:
     """Comprehensive test framework for Agentum."""
 
     def __init__(self):
-        # MODIFICATION: Add guards here as well
         if not os.getenv("GOOGLE_API_KEY"):
             pytest.skip("GOOGLE_API_KEY not found, skipping comprehensive suite")
         if not os.getenv("ANTHROPIC_API_KEY"):

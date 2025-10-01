@@ -6,17 +6,44 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-
-# MODIFICATION: Import rich components for beautiful output
 from rich.console import Console
+from rich.layout import Layout
+from rich.live import Live
 from rich.panel import Panel
 from rich.syntax import Syntax
+from rich.text import Text
 
 from .exceptions import TaskConfigurationError, WorkflowDefinitionError
 from .workflow import Workflow
 
 app = typer.Typer(help="Agentum CLI - Run agentic workflows")
 console = Console()
+
+
+def make_layout() -> Layout:
+    """Define the structure for the live display."""
+    layout = Layout(name="root")
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="log"),
+        Layout(name="final_state", size=10),
+    )
+    layout["header"].update(
+        Panel(
+            Text("🚀 Agentum Live Tracer", style="bold green", justify="center"),
+            title="[bold magenta]STATUS[/bold magenta]",
+            border_style="green",
+            height=3,
+        )
+    )
+    layout["final_state"].update(
+        Panel(
+            Text("Waiting for completion...", style="dim"),
+            title="[bold yellow]Final State[/bold yellow]",
+            border_style="yellow",
+        )
+    )
+    return layout
 
 
 @app.command()
@@ -114,59 +141,81 @@ async def _run_workflow(workflow: Workflow, state: dict, thread_id: Optional[str
 
 async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[str]):
     """Run a workflow with rich, real-time streaming output."""
-    console.print(
-        Panel(
-            f"🚀 Streaming workflow [bold cyan]'{workflow.name}'[/bold cyan]",
-            expand=False,
-            border_style="green",
-        )
-    )
 
-    final_state = {}
+    # Initialize the rich layout and log content
+    layout = make_layout()
+    log_content = Text("", style="dim")
+
+    # Define color scheme for log entries
+    TASK_COLOR = "bold cyan"
+    AGENT_COLOR = "bold magenta"
+    TOOL_COLOR = "bold blue"
+    RESULT_COLOR = "green"
+
+    def log(message: str, style: str = "white"):
+        """Append a message to the log pane."""
+        nonlocal log_content
+        log_content.append(Text(f"{message}\n", style=style))
+        layout["log"].update(
+            Panel(log_content, title="[bold]Workflow Log[/bold]", border_style="white")
+        )
+
+    log(f"Starting workflow: {workflow.name}", "bold yellow")
+    log(f"Initial State: {list(state.keys())}", "dim")
+
     try:
-        async for event in workflow.astream(state, thread_id=thread_id):
-            # Each event is a dictionary where keys are the names of the nodes that just ran
-            for node_name, node_output in event.items():
-                if node_name == "__end__":
-                    break
+        with Live(layout, screen=False, refresh_per_second=4) as live:
+            async for event in workflow.astream(state, thread_id=thread_id):
+                for node_name, node_output in event.items():
+                    if node_name == "__end__":
+                        break
 
-                # The output of a node is merged into the main state
-                # We capture the final state as we go
-                final_state.update(node_output)
+                    # 1. Detect and Log the Completion of the Task
+                    log(f"• [bold white]Task: {node_name}[/] finished.", TASK_COLOR)
 
-                # Format the output for rich display
-                output_json = json.dumps(node_output, indent=2)
+                    # 2. Extract and Log the State Update
+                    if node_output:
+                        update_keys = list(node_output.keys())
+                        log(
+                            f"  ↳ [dim]Updated State Keys:[/dim] {', '.join(update_keys)}",
+                            "dim",
+                        )
 
-                console.print(
-                    Panel(
-                        Syntax(output_json, "json", theme="monokai", line_numbers=True),
-                        title=f"[bold magenta]Task Finished: {node_name}[/bold magenta]",
-                        subtitle="[dim]State Update[/dim]",
-                        border_style="blue",
-                    )
+                    # 3. Handle Special Agent/Tool Events (Observability)
+                    # We can't easily capture the inner events from astream in this LangGraph structure,
+                    # so we will use the global event listener system as a better, more direct way.
+                    # For a clean CLI tracer, the focus is on Node I/O.
+                    pass
+
+                    # 4. Update the final state display
+                    state.update(node_output)
+
+            # After loop breaks, display final status
+            final_state = state
+
+            log("🏁 Workflow finished.", "bold green")
+
+            # Update the final state panel
+            final_state_syntax = Syntax(
+                json.dumps(final_state, indent=2, default=str),
+                "json",
+                theme="monokai",
+                line_numbers=True,
+            )
+            layout["final_state"].update(
+                Panel(
+                    final_state_syntax,
+                    title="[bold green]Final State[/bold green]",
+                    border_style="green",
                 )
-
-        console.print(
-            Panel(
-                "🏁 Workflow stream completed successfully!",
-                expand=False,
-                border_style="green",
             )
-        )
-        # The final state is in the __end__ key
-        if event and "__end__" in event:
-            final_state = event["__end__"]
 
-        console.print(
-            Panel(
-                Syntax(json.dumps(final_state, indent=2), "json", theme="monokai"),
-                title="[bold]Final State[/bold]",
-                border_style="yellow",
-            )
-        )
+            # Keep the final display visible for a moment
+            await asyncio.sleep(1)
 
     except Exception as e:
-        console.print(f"[red]Workflow stream failed: {e}[/red]")
+        log(f"❌ Workflow stream failed: {e}", "bold red")
+        console.print(f"[red]Error: {e}[/red]")
         raise
 
 
