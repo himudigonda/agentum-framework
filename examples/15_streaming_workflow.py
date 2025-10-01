@@ -66,27 +66,28 @@ streaming_workflow.add_edge("summarize", streaming_workflow.END)
 async def main():
     initial_state = {"topic": "The history of the internet"}
 
-    print("🚀 Starting workflow stream...")
-    print("-" * 30)
+    print(
+        "--------------------------------------------------------------------------------"
+    )
+    print("🚀 Running the stream via the CLI for a rich, real-time trace.")
+    print(
+        "   Please run the following command in your terminal for the full experience:"
+    )
+    print("   [bold]agentum run examples/15_streaming_workflow.py --stream[/bold]")
+    print(
+        "--------------------------------------------------------------------------------"
+    )
 
-    # astream() returns an async generator that yields events as they complete.
+    # We'll just run the simpler, non-rich print for the programmatic execution
+    print("\n[dim]Running simple programmatic stream...[/dim]")
+
     async for event in streaming_workflow.astream(initial_state):
-        # The event dictionary's key is the name of the node that just finished.
         if "research" in event:
             print("✅ RESEARCH TASK COMPLETE")
-            data = event["research"]["research_data"]
-            print(f"   -> Research data received ({len(data)} characters).")
-            print("-" * 30)
-
         if "summarize" in event:
             print("✅ SUMMARIZE TASK COMPLETE")
-            summary = event["summarize"]["summary"]
-            print(f"   -> Summary received: '{summary[:100]}...'")
-            print("-" * 30)
 
-    print("🏁 Workflow stream finished.")
-    print("\nPro Tip: Try running this from the CLI for a rich visual trace:")
-    print("agentum run examples/15_streaming_workflow.py --stream")
+    print("🏁 Programmatic stream finished.")
 
 
 if __name__ == "__main__":
