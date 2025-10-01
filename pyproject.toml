@@ -30,6 +30,7 @@ dependencies = [
     "typer>=0.12", # For a future CLI
     "python-dotenv>=1.1.1",
     "langchain-google-genai>=2.1.12",
+    "redis>=5.0.0", # For state persistence
 ]
 
 # --- Development Dependencies ---
@@ -66,3 +67,6 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "ruff>=0.13.2",
 ]
+
+[project.scripts]
+agentum = "agentum.cli:app"

@@ -48,7 +48,15 @@ class GraphCompiler:
             )
 
             # 1. Format the initial prompt
-            formatted_instructions = instructions_template.format(**state.model_dump())
+            try:
+                formatted_instructions = instructions_template.format(
+                    **state.model_dump()
+                )
+            except KeyError as e:
+                raise ValueError(
+                    f"Missing state key '{e}' required by task '{task_name}' instructions template."
+                )
+
             human_message = HumanMessage(
                 content=f"{agent.system_prompt}\n\n{formatted_instructions}"
             )
@@ -59,72 +67,99 @@ class GraphCompiler:
                 messages.extend(agent.memory.load_messages())
             messages.append(human_message)
 
-            # 2. Start the agentic loop
-            while True:
-                await self.workflow._emit("agent_llm_start", messages=messages)
-                response = await llm_with_tools.ainvoke(messages)
-                await self.workflow._emit("agent_llm_end", response=response)
+            # --- NEW RESILIENCE LOGIC ---
+            for attempt in range(agent.max_retries):
+                try:
+                    # The entire agentic loop is now wrapped in a try block
+                    while True:
+                        await self.workflow._emit("agent_llm_start", messages=messages)
+                        response = await llm_with_tools.ainvoke(messages)
+                        await self.workflow._emit("agent_llm_end", response=response)
 
-                if not response.tool_calls:
-                    # If no tool calls, the agent has finished its thought process.
-                    console.print(f"    - Agent '{agent.name}' responded directly.")
+                        if not response.tool_calls:
+                            # If no tool calls, the agent has finished its thought process.
+                            console.print(
+                                f"    - Agent '{agent.name}' responded directly."
+                            )
+                            break
+
+                        # The agent wants to use a tool!
+                        console.print(
+                            f"    - Agent '{agent.name}' wants to call tools: {[tc['name'] for tc in response.tool_calls]}"
+                        )
+                        messages.append(
+                            response
+                        )  # Add the AI's tool-calling request to history
+
+                        # 3. Execute the requested tools
+                        for tool_call in response.tool_calls:
+                            await self.workflow._emit(
+                                "agent_tool_call",
+                                tool_name=tool_call["name"],
+                                tool_args=tool_call["args"],
+                            )
+
+                            tool_func = next(
+                                (
+                                    t
+                                    for t in agent.tools
+                                    if t.__name__ == tool_call["name"]
+                                ),
+                                None,
+                            )
+                            if not tool_func:
+                                # This is a safety check; should rarely happen if the LLM is good
+                                messages.append(
+                                    ToolMessage(
+                                        content=f"Error: Tool '{tool_call['name']}' not found.",
+                                        tool_call_id=tool_call["id"],
+                                    )
+                                )
+                                continue
+
+                            try:
+                                # Execute the tool and get the result
+                                result = await asyncio.to_thread(
+                                    tool_func, **tool_call["args"]
+                                )
+                                await self.workflow._emit(
+                                    "agent_tool_result",
+                                    tool_name=tool_call["name"],
+                                    result=result,
+                                )
+
+                                # Add the tool's result to the message history for the next loop
+                                messages.append(
+                                    ToolMessage(
+                                        content=str(result),
+                                        tool_call_id=tool_call["id"],
+                                    )
+                                )
+                            except Exception as e:
+                                error_message = (
+                                    f"Error executing tool '{tool_call['name']}': {e}"
+                                )
+                                console.print(
+                                    f"[bold red]    - {error_message}[/bold red]"
+                                )
+                                messages.append(
+                                    ToolMessage(
+                                        content=error_message,
+                                        tool_call_id=tool_call["id"],
+                                    )
+                                )
+
+                    # If the loop completes without error, break the retry loop
                     break
-
-                # The agent wants to use a tool!
-                console.print(
-                    f"    - Agent '{agent.name}' wants to call tools: {[tc['name'] for tc in response.tool_calls]}"
-                )
-                messages.append(
-                    response
-                )  # Add the AI's tool-calling request to history
-
-                # 3. Execute the requested tools
-                for tool_call in response.tool_calls:
-                    await self.workflow._emit(
-                        "agent_tool_call",
-                        tool_name=tool_call["name"],
-                        tool_args=tool_call["args"],
+                except Exception as e:
+                    console.print(
+                        f"[bold yellow]  - Attempt {attempt + 1}/{agent.max_retries} failed: {e}[/bold yellow]"
                     )
-
-                    tool_func = next(
-                        (t for t in agent.tools if t.__name__ == tool_call["name"]),
-                        None,
-                    )
-                    if not tool_func:
-                        # This is a safety check; should rarely happen if the LLM is good
-                        messages.append(
-                            ToolMessage(
-                                content=f"Error: Tool '{tool_call['name']}' not found.",
-                                tool_call_id=tool_call["id"],
-                            )
-                        )
-                        continue
-
-                    try:
-                        # Execute the tool and get the result
-                        result = await asyncio.to_thread(tool_func, **tool_call["args"])
-                        await self.workflow._emit(
-                            "agent_tool_result",
-                            tool_name=tool_call["name"],
-                            result=result,
-                        )
-
-                        # Add the tool's result to the message history for the next loop
-                        messages.append(
-                            ToolMessage(
-                                content=str(result), tool_call_id=tool_call["id"]
-                            )
-                        )
-                    except Exception as e:
-                        error_message = (
-                            f"Error executing tool '{tool_call['name']}': {e}"
-                        )
-                        console.print(f"[bold red]    - {error_message}[/bold red]")
-                        messages.append(
-                            ToolMessage(
-                                content=error_message, tool_call_id=tool_call["id"]
-                            )
-                        )
+                    if attempt + 1 == agent.max_retries:
+                        # If all retries fail, re-raise the exception
+                        raise e
+                    # Exponential backoff: wait 1s, 2s, 4s, etc. before retrying
+                    await asyncio.sleep(2**attempt)
 
             # The loop is finished, the final response is in `response.content`
             final_content = response.content
@@ -159,10 +194,17 @@ class GraphCompiler:
             await self.workflow._emit("task_start", task_name=task_name, state=state)
 
             console.print(f"  Executing Tool Task: [bold cyan]{task_name}[/bold cyan]")
-            resolved_inputs = {
-                key: template.format(**state.model_dump())
-                for key, template in input_mapping.items()
-            }
+
+            # Resolve inputs with error handling
+            try:
+                resolved_inputs = {
+                    key: template.format(**state.model_dump())
+                    for key, template in input_mapping.items()
+                }
+            except KeyError as e:
+                raise ValueError(
+                    f"Missing state key '{e}' required by tool '{task_name}' input mapping."
+                )
 
             # Handle both sync and async tools gracefully
             if inspect.iscoroutinefunction(tool_func):
