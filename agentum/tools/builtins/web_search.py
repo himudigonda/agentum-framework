@@ -17,7 +17,9 @@ def search_web_tavily(query: str) -> str:
             return "Error: TAVILY_API_KEY environment variable is not set."
 
         client = TavilyClient(api_key=api_key)
-        response = client.search(query=query, search_depth="advanced")
+        response = client.search(
+            query=query, search_depth="advanced"
+        )  # MODIFICATION: Remove timeout (not supported by TavilyClient)
 
         formatted_results = [
             f"Source URL: {res['url']}\nContent: {res['content']}"

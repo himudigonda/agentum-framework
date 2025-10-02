@@ -10,12 +10,39 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from rich.console import Console
+from rich.panel import Panel
 
 from .exceptions import ExecutionError, StateValidationError, WorkflowDefinitionError
+from .providers.google import GoogleLLM  # Import for multi-modal capability check
 from .state import State
 from .workflow import Workflow
 
 console = Console()
+
+
+def _is_safe_path(path_str: str) -> bool:
+    """Restrict to relative paths within the project and disallow path traversal."""
+    return (
+        not path_str.startswith("/")
+        and ".." not in path_str
+        and not path_str.startswith("~")
+        and not path_str.startswith("\\")  # Windows absolute paths
+    )
+
+
+def _safe_format(template: str, state_data: Dict) -> str:
+    """Safely formats a string template using a restricted subset of state keys."""
+    import re
+
+    # Find all keys in the template (e.g., {key_name})
+    keys_in_template = re.findall(r"\{(\w+)\}", template)
+    # Create a restricted dict with ONLY the keys present in the template
+    # This prevents unintentional interpolation/KeyError from state values.
+    restricted_data = {
+        k: state_data.get(k, f"{{MISSING_KEY:{k}}}") for k in keys_in_template
+    }
+    # Perform the actual format. If a key is missing, it will now show up explicitly.
+    return template.format(**restricted_data)
 
 
 class GraphCompiler:
@@ -66,47 +93,63 @@ class GraphCompiler:
             prompt_text = f"{agent.system_prompt}\n\n{formatted_instructions}"
             message_content = [{"type": "text", "text": prompt_text}]
 
-            # Priority 1: Check for a local image path
-            if hasattr(state, "image_path") and getattr(state, "image_path"):
-                image_path_str = getattr(state, "image_path")
-                image_path = Path(image_path_str)
-                if image_path.exists():
-                    console.print(
-                        f"    - Attaching local image for analysis: {image_path_str}"
-                    )
-                    # Read image, encode to base64, and determine MIME type
-                    mime_type, _ = mimetypes.guess_type(image_path)
-                    if mime_type:
-                        with open(image_path, "rb") as image_file:
-                            base64_image = base64.b64encode(image_file.read()).decode(
-                                "utf-8"
-                            )
-                        message_content.append(
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{base64_image}"
-                                },
-                            }
+            # Check if the LLM supports multi-modal input before attempting image logic
+            if isinstance(agent.llm, GoogleLLM):
+                # Priority 1: Check for a local image path
+                if hasattr(state, "image_path") and getattr(state, "image_path"):
+                    image_path_str = getattr(state, "image_path")
+
+                    # Security check: prevent path traversal and arbitrary file access
+                    if not _is_safe_path(image_path_str):
+                        console.print(
+                            f"[bold red]SECURITY ERROR: Path traversal detected in {image_path_str}. Skipping image.[/bold red]"
                         )
                     else:
-                        console.print(
-                            f"[yellow]Warning: Could not determine MIME type for {image_path_str}. Skipping image.[/yellow]"
-                        )
-                else:
-                    console.print(
-                        f"[yellow]Warning: Image file not found at {image_path_str}. Skipping image.[/yellow]"
-                    )
+                        image_path = Path(image_path_str)
+                        if image_path.exists():
+                            console.print(
+                                f"    - Attaching local image for analysis: {image_path_str}"
+                            )
+                            # Read image, encode to base64, and determine MIME type
+                            mime_type, _ = mimetypes.guess_type(image_path)
+                            if mime_type:
+                                with open(image_path, "rb") as image_file:
+                                    base64_image = base64.b64encode(
+                                        image_file.read()
+                                    ).decode("utf-8")
+                                message_content.append(
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:{mime_type};base64,{base64_image}"
+                                        },
+                                    }
+                                )
+                            else:
+                                console.print(
+                                    f"[yellow]Warning: Could not determine MIME type for {image_path_str}. Skipping image.[/yellow]"
+                                )
+                        else:
+                            console.print(
+                                f"[yellow]Warning: Image file not found at {image_path_str}. Skipping image.[/yellow]"
+                            )
 
-            # Priority 2: Check for an image URL (if no local path was used)
-            elif hasattr(state, "image_url") and getattr(state, "image_url"):
-                image_url = getattr(state, "image_url")
-                console.print(f"    - Attaching remote image for analysis: {image_url}")
-                message_content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": image_url},
-                    }
+                # Priority 2: Check for an image URL (if no local path was used)
+                elif hasattr(state, "image_url") and getattr(state, "image_url"):
+                    image_url = getattr(state, "image_url")
+                    console.print(
+                        f"    - Attaching remote image for analysis: {image_url}"
+                    )
+                    message_content.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url},
+                        }
+                    )
+            else:
+                # Non-multi-modal LLM - skip image processing to avoid token waste
+                console.print(
+                    "[yellow]Warning: Agent LLM does not support multi-modal input. Image logic skipped.[/yellow]"
                 )
 
             human_message = HumanMessage(content=message_content)
@@ -119,6 +162,7 @@ class GraphCompiler:
             messages.append(human_message)
 
             # --- NEW RESILIENCE LOGIC ---
+            response = None  # Initialize response variable
             for attempt in range(agent.max_retries):
                 try:
                     # The entire agentic loop is now wrapped in a try block
@@ -132,6 +176,18 @@ class GraphCompiler:
                             console.print(
                                 f"    - Agent '{agent.name}' responded directly."
                             )
+
+                            # Enhanced: Show the actual agent output in a beautiful panel
+                            agent_output = response.content.strip()
+                            console.print(
+                                Panel(
+                                    agent_output,
+                                    title=f"[bold blue]{agent.name}[/bold blue] Output",
+                                    border_style="blue",
+                                    padding=(1, 2),
+                                )
+                            )
+
                             break
 
                         # The agent wants to use a tool!
@@ -173,6 +229,18 @@ class GraphCompiler:
                                 result = await asyncio.to_thread(
                                     tool_func, **tool_call["args"]
                                 )
+
+                                # Enhanced: Show tool result in a beautiful panel
+                                tool_output = str(result).strip()
+                                console.print(
+                                    Panel(
+                                        tool_output,
+                                        title=f"[bold green]Tool '{tool_call['name']}'[/bold green] Result",
+                                        border_style="green",
+                                        padding=(1, 2),
+                                    )
+                                )
+
                                 await self.workflow._emit(
                                     "agent_tool_result",
                                     tool_name=tool_call["name"],
@@ -249,12 +317,12 @@ class GraphCompiler:
             # Resolve inputs with error handling
             try:
                 resolved_inputs = {
-                    key: template.format(**state.model_dump())
+                    key: _safe_format(template, state.model_dump())
                     for key, template in input_mapping.items()
                 }
-            except KeyError as e:
+            except Exception as e:  # Broader catch for potential _safe_format errors
                 raise StateValidationError(
-                    f"Missing state key '{e}' required by tool '{task_name}' input mapping."
+                    f"Error resolving inputs for tool '{task_name}': {e}"
                 )
 
             # Handle both sync and async tools gracefully
@@ -263,6 +331,17 @@ class GraphCompiler:
             else:
                 # Run synchronous tools in a separate thread to avoid blocking the event loop
                 result = await asyncio.to_thread(tool_func, **resolved_inputs)
+
+            # Enhanced: Show tool result in a beautiful panel
+            tool_output = str(result).strip()
+            console.print(
+                Panel(
+                    tool_output,
+                    title=f"[bold cyan]Tool '{task_name}'[/bold cyan] Result",
+                    border_style="cyan",
+                    padding=(1, 2),
+                )
+            )
 
             # Use the explicit mapping for tools as well
             state_update = {
@@ -309,6 +388,9 @@ class GraphCompiler:
                 workflow_graph.add_conditional_edges(source, path_func, paths_map)
 
         # 4. Compile the graph
+        # Note: LangGraph's state updates are managed implicitly now.
+        # Each node's returned dictionary is merged into the main state object.
+        return workflow_graph.compile()
         # Note: LangGraph's state updates are managed implicitly now.
         # Each node's returned dictionary is merged into the main state object.
         return workflow_graph.compile()
