@@ -1,7 +1,6 @@
 # agentum/cli.py
 import asyncio
 import json
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -69,7 +68,7 @@ def run(
         raise typer.Exit(1)
 
     if not script_file.suffix == ".py":
-        console.print(f"[red]Error: Script must be a Python file (.py).[/red]")
+        console.print("[red]Error: Script must be a Python file (.py).[/red]")
         raise typer.Exit(1)
 
     try:
@@ -148,9 +147,6 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
 
     # Define color scheme for log entries
     TASK_COLOR = "bold cyan"
-    AGENT_COLOR = "bold magenta"
-    TOOL_COLOR = "bold blue"
-    RESULT_COLOR = "green"
 
     def log(message: str, style: str = "white"):
         """Append a message to the log pane."""
@@ -164,7 +160,7 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
     log(f"Initial State: {list(state.keys())}", "dim")
 
     try:
-        with Live(layout, screen=False, refresh_per_second=4) as live:
+        with Live(layout, screen=False, refresh_per_second=4):
             async for event in workflow.astream(state, thread_id=thread_id):
                 for node_name, node_output in event.items():
                     if node_name == "__end__":
@@ -301,7 +297,7 @@ def validate(
         raise typer.Exit(1)
 
     if not script_file.suffix == ".py":
-        console.print(f"[red]Error: Script must be a Python file (.py).[/red]")
+        console.print("[red]Error: Script must be a Python file (.py).[/red]")
         raise typer.Exit(1)
 
     try:
