@@ -48,20 +48,9 @@ def _is_safe_path(path_str: str) -> bool:
 
 def _safe_format(template: str, state_data: Dict) -> str:
     try:
-        jinja_template = jinja_env.from_string(template)
-        template_vars = meta.find_undeclared_variables(jinja_env.parse(template))
-
-        context = {key: state_data[key] for key in template_vars if key in state_data}
-
-        missing_keys = template_vars - context.keys()
-        if missing_keys:
-            raise KeyError(
-                f"Missing keys required by template: {', '.join(missing_keys)}"
-            )
-
-        return jinja_template.render(context)
-    except ImportError as e:
-        raise e
+        # Use Python's string formatting instead of Jinja2
+        # Convert {variable} to {variable} for Python string formatting
+        return template.format(**state_data)
     except KeyError as e:
         raise StateValidationError(f"Missing state key {e} required by template.")
     except Exception as e:
