@@ -175,7 +175,7 @@ class Workflow:
             "tool": tool,
             "instructions": instructions,
             "inputs": inputs,
-            "output_mapping": output_mapping or {name: "output"},  # Default mapping
+            "output_mapping": output_mapping,
         }
         console.print(f"  - Task added: [cyan]{name}[/cyan]")
 

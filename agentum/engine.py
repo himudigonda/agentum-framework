@@ -80,10 +80,10 @@ class GraphCompiler:
 
             # 1. Format the initial prompt text
             try:
-                formatted_instructions = instructions_template.format(
-                    **state.model_dump()
+                formatted_instructions = _safe_format(
+                    instructions_template, state.model_dump()
                 )
-            except KeyError as e:
+            except Exception as e:
                 raise StateValidationError(
                     f"Missing state key '{e}' required by task '{task_name}' instructions template."
                 )
@@ -388,6 +388,9 @@ class GraphCompiler:
                 workflow_graph.add_conditional_edges(source, path_func, paths_map)
 
         # 4. Compile the graph
+        # Note: LangGraph's state updates are managed implicitly now.
+        # Each node's returned dictionary is merged into the main state object.
+        return workflow_graph.compile()
         # Note: LangGraph's state updates are managed implicitly now.
         # Each node's returned dictionary is merged into the main state object.
         return workflow_graph.compile()

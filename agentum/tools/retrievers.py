@@ -4,13 +4,13 @@ from typing import Any
 from agentum import tool
 
 
-def create_vector_search_tool(kb: Any):
+def create_vector_search_tool(kb: Any, **tool_kwargs):
     """
     Creates a vector search tool bound to a specific knowledge base.
     This is a factory function that returns a tool configured for a specific KB.
     """
 
-    @tool
+    @tool(**tool_kwargs)
     def vector_search(query: str, top_k: int = 4) -> str:
         """
         Performs a simple semantic vector search on a Knowledge Base.

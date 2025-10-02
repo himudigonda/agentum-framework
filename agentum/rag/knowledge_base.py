@@ -21,14 +21,23 @@ class KnowledgeBase:
     def __init__(
         self,
         name: str,
+        persist_directory: Optional[str] = None,
         embedding_model: str = "all-MiniLM-L6-v2",
         enable_reranking: bool = True,
     ):
         self.name = name
         self.embedding_function = HuggingFaceEmbeddings(model_name=embedding_model)
         self.vector_store = Chroma(
-            collection_name=name, embedding_function=self.embedding_function
+            collection_name=name,
+            embedding_function=self.embedding_function,
+            persist_directory=persist_directory,
         )
+
+        if persist_directory is None:
+            console.print(
+                f"[yellow]Warning: KnowledgeBase '{self.name}' is in-memory/ephemeral. Use persist_directory for production.[/yellow]",
+                style="bold yellow",
+            )
 
         # Initialize reranker if available and enabled
         self.reranker = None
@@ -142,4 +151,5 @@ class KnowledgeBase:
                 # For async compatibility
                 return self.rerank_func(query)
 
+        return RerankedRetriever(retriever, rerank_get_relevant_documents)
         return RerankedRetriever(retriever, rerank_get_relevant_documents)
