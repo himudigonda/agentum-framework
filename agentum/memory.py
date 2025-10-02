@@ -80,7 +80,6 @@ class VectorStoreMemory(BaseMemory):
         if not latest_input or not isinstance(latest_input.content, str):
             return []
 
-        # Search using the content of the latest message
         relevant_docs = self.vector_store.similarity_search(latest_input.content, k=3)
         if not relevant_docs:
             return []
@@ -96,9 +95,8 @@ class VectorStoreMemory(BaseMemory):
         ]
 
     def save_messages(self, messages: List[BaseMessage]):
-        # This method should save the history, not clear a buffer.
         text_to_save = get_buffer_string(messages)
-        if text_to_save:  # Avoid adding empty strings
+        if text_to_save:
             self.vector_store.add_texts(
                 [text_to_save], metadatas=[{"timestamp": str(datetime.now())}]
             )

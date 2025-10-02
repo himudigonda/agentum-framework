@@ -18,9 +18,23 @@ from .workflow import Workflow
 
 console = Console()
 
-# Define the directory where all user-accessible files MUST reside.
-# For now, this is the directory the script is run from.
 SAFE_BASE_DIR = Path.cwd().resolve()
+
+try:
+    from jinja2 import Environment, meta
+except ImportError:
+
+    class Environment:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def from_string(self, *args, **kwargs):
+            raise ImportError(
+                "Jinja2 is required for state templating. Please run 'pip install jinja2'"
+            )
+
+
+jinja_env = Environment()
 
 
 def _is_safe_path(path_str: str) -> bool:
@@ -33,15 +47,25 @@ def _is_safe_path(path_str: str) -> bool:
 
 
 def _safe_format(template: str, state_data: Dict) -> str:
-    import re
+    try:
+        jinja_template = jinja_env.from_string(template)
+        template_vars = meta.find_undeclared_variables(jinja_env.parse(template))
 
-    keys_in_template = re.findall("\\{(\\w+)\\}", template)
-    restricted_data = {}
-    for k in keys_in_template:
-        if k not in state_data:
-            raise KeyError(k)
-        restricted_data[k] = state_data[k]
-    return template.format(**restricted_data)
+        context = {key: state_data[key] for key in template_vars if key in state_data}
+
+        missing_keys = template_vars - context.keys()
+        if missing_keys:
+            raise KeyError(
+                f"Missing keys required by template: {', '.join(missing_keys)}"
+            )
+
+        return jinja_template.render(context)
+    except ImportError as e:
+        raise e
+    except KeyError as e:
+        raise StateValidationError(f"Missing state key {e} required by template.")
+    except Exception as e:
+        raise ExecutionError(f"Failed to render template: {e}")
 
 
 class GraphCompiler:
@@ -82,24 +106,19 @@ class GraphCompiler:
                 if hasattr(state, "image_path") and getattr(state, "image_path"):
                     image_path_str = getattr(state, "image_path")
 
-                    # --- NEW SECURITY CHECK ---
                     try:
-                        # Resolve the user-provided path to its absolute path
                         user_path = SAFE_BASE_DIR / image_path_str
                         resolved_path = user_path.resolve()
 
-                        # Check if the resolved path is within our safe directory
                         if not resolved_path.is_relative_to(SAFE_BASE_DIR):
                             console.print(
                                 f"[bold red]SECURITY ERROR: Path traversal detected in {image_path_str}. The path is outside the safe directory.[/bold red]"
                             )
-                            # Continue without the image
                         elif not resolved_path.exists():
                             console.print(
                                 f"[yellow]Warning: Image file not found at {resolved_path}. Skipping image.[/yellow]"
                             )
                         else:
-                            # It's safe to proceed, use resolved_path from here
                             console.print(
                                 f"    - Attaching local image for analysis: {resolved_path}"
                             )
@@ -140,10 +159,10 @@ class GraphCompiler:
             human_message = HumanMessage(content=message_content)
             messages = []
             if agent.memory:
-                # The new, cleaner way to load context
                 messages.extend(agent.memory.load_messages(human_message))
             messages.append(human_message)
             response = None
+            last_tool_result = None
             for attempt in range(agent.max_retries):
                 try:
                     while True:
@@ -194,6 +213,7 @@ class GraphCompiler:
                                 result = await asyncio.to_thread(
                                     tool_func, **tool_call["args"]
                                 )
+                                last_tool_result = result
                                 tool_output = str(result).strip()
                                 console.print(
                                     Panel(
@@ -215,6 +235,7 @@ class GraphCompiler:
                                     )
                                 )
                             except Exception as e:
+                                last_tool_result = None
                                 error_message = (
                                     f"Error executing tool '{tool_call['name']}': {e}"
                                 )
@@ -243,10 +264,11 @@ class GraphCompiler:
             )
             state_update = {}
             if output_mapping:
-                state_update = {
-                    state_key: final_content
-                    for state_key, response_key in output_mapping.items()
-                }
+                for state_key, source_key in output_mapping.items():
+                    if source_key == "tool_result":
+                        state_update[state_key] = last_tool_result
+                    else:
+                        state_update[state_key] = final_content
             await self.workflow._emit(
                 "task_finish", task_name=task_name, state_update=state_update
             )

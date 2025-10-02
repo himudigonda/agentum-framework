@@ -132,16 +132,14 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
 
     log(f"Starting workflow: {workflow.name}", "bold yellow")
     log(f"Initial State: {list(state.keys())}", "dim")
-    final_state = {}  # Initialize
+    final_state = {}
     try:
         with Live(layout, screen=False, refresh_per_second=4):
             async for event in workflow.astream(state, thread_id=thread_id):
-                # Check for the final state event first
                 if "__end__" in event:
                     final_state = event["__end__"]
-                    break  # Stop processing after the end
+                    break
 
-                # The rest of the events are for logging node completion
                 for node_name, node_output in event.items():
                     log(f"• [bold white]Task: {node_name}[/] finished.", TASK_COLOR)
                     if node_output:
@@ -151,7 +149,6 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
                             "dim",
                         )
 
-            # Now, final_state is guaranteed to be the correct one
             log("🏁 Workflow finished.", "bold green")
             if final_state:
                 final_state_syntax = Syntax(

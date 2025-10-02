@@ -22,7 +22,6 @@ classifiers = [
 ]
 keywords = ["ai", "multi-agent", "workflow", "orchestration", "llm", "agents", "rag", "vector-search"]
 
-# --- Core Dependencies ---
 dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3.4",
@@ -43,6 +42,7 @@ dependencies = [
     "langchain>=0.3",
     "graphviz>=0.21",
     "tavily-python>=0.3.0",
+    "jinja2>=3.0",
 ]
 
 [project.urls]
@@ -51,7 +51,6 @@ Documentation = "https://agentum.dev"
 Repository = "https://github.com/agentum-framework/agentum"
 Issues = "https://github.com/agentum-framework/agentum/issues"
 
-# --- Development Dependencies ---
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
@@ -61,7 +60,6 @@ dev = [
     "pre-commit>=3.0",
 ]
 
-# --- Tool Configurations ---
 [tool.black]
 line-length = 88
 target-version = ['py311']
@@ -71,8 +69,8 @@ line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"] # Standard lints
-ignore = ["E501"] # Handled by black
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
