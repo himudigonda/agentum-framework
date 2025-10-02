@@ -14,7 +14,8 @@ import os
 import tempfile
 from typing import Any
 from dotenv import load_dotenv
-from agentum import Agent, AnthropicLLM, ConversationMemory, GoogleLLM, KnowledgeBase, State, Workflow, tool
+from agentum import Agent, GoogleLLM, AnthropicLLM, State, Workflow, KnowledgeBase, ConversationMemory, tool
+from agentum.config import settings
 load_dotenv()
 
 class AdvancedState(State):
@@ -48,8 +49,8 @@ def create_knowledge_base() -> KnowledgeBase:
     return kb
 
 def create_advanced_workflow() -> Workflow:
-    google_llm = GoogleLLM(api_key=os.getenv('GOOGLE_API_KEY'), model='gemini-2.5-flash-lite')
-    anthropic_llm = AnthropicLLM(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    google_llm = GoogleLLM(api_key=settings.GOOGLE_API_KEY, model='gemini-2.5-flash-lite')
+    anthropic_llm = AnthropicLLM(api_key=settings.ANTHROPIC_API_KEY')
     researcher = Agent(name='Researcher', system_prompt='You are an expert researcher who finds accurate information and conducts thorough analysis.', llm=google_llm, tools=[search_knowledge_base], memory=ConversationMemory(), max_retries=3)
     analyst = Agent(name='Analyst', system_prompt='You are a data analyst who processes information and extracts key insights.', llm=anthropic_llm, tools=[analyze_data], memory=ConversationMemory(), max_retries=3)
     visual_analyst = Agent(name='VisualAnalyst', system_prompt='You are a visual analyst who can analyze images and describe what you see in detail.', llm=google_llm, memory=ConversationMemory(), max_retries=3)
@@ -105,8 +106,8 @@ def run_vision_demo():
 
 def run_provider_comparison():
     print('\n🔄 Running Provider Comparison Demo...')
-    google_llm = GoogleLLM(api_key=os.getenv('GOOGLE_API_KEY'), model='gemini-2.5-flash-lite')
-    anthropic_llm = AnthropicLLM(api_key=os.getenv('ANTHROPIC_API_KEY'))
+    google_llm = GoogleLLM(api_key=settings.GOOGLE_API_KEY, model='gemini-2.5-flash-lite')
+    anthropic_llm = AnthropicLLM(api_key=settings.ANTHROPIC_API_KEY')
     test_query = 'Explain quantum computing in simple terms'
     google_agent = Agent(name='GoogleAgent', system_prompt='You are a helpful assistant.', llm=google_llm)
     google_workflow = Workflow(name='GoogleTest', state=AdvancedState)
@@ -134,11 +135,11 @@ def run_provider_comparison():
 def main():
     print('🚀 Agentum 2.0 Advanced Demo - Showcasing All Features')
     print('=' * 60)
-    if not os.getenv('GOOGLE_API_KEY'):
+    if not settings.GOOGLE_API_KEY:
         print('⚠️  GOOGLE_API_KEY not found. Some demos may fail.')
-    if not os.getenv('ANTHROPIC_API_KEY'):
+    if not settings.ANTHROPIC_API_KEY:
         print('⚠️  ANTHROPIC_API_KEY not found. Some demos may fail.')
-    if not os.getenv('GOOGLE_API_KEY') and (not os.getenv('ANTHROPIC_API_KEY')):
+    if not settings.GOOGLE_API_KEY and (not settings.ANTHROPIC_API_KEY):
         print('❌ No API keys found. Please set at least one API key to run demos.')
         return
     success_count = 0

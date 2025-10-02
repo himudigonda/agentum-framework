@@ -210,9 +210,12 @@ class GraphCompiler:
                                 )
                                 continue
                             try:
-                                result = await asyncio.to_thread(
-                                    tool_func, **tool_call["args"]
-                                )
+                                if inspect.iscoroutinefunction(tool_func):
+                                    result = await tool_func(**tool_call["args"])
+                                else:
+                                    result = await asyncio.to_thread(
+                                        tool_func, **tool_call["args"]
+                                    )
                                 last_tool_result = result
                                 tool_output = str(result).strip()
                                 console.print(

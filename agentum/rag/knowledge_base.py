@@ -37,6 +37,7 @@ class KnowledgeBase:
         persist_directory: Optional[str] = None,
         embedding_model: str = "all-MiniLM-L6-v2",
         enable_reranking: bool = True,
+        reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
     ):
         self.name = name
         self.embedding_function = get_embedding_function(embedding_model)
@@ -53,9 +54,7 @@ class KnowledgeBase:
         self.reranker = None
         if enable_reranking and CrossEncoder is not None:
             try:
-                self.reranker = get_reranker_model(
-                    "cross-encoder/ms-marco-MiniLM-L-6-v2"
-                )
+                self.reranker = get_reranker_model(reranker_model)
                 console.print(
                     f"🔄 Reranking enabled for KnowledgeBase '{self.name}'",
                     style="bold green",
