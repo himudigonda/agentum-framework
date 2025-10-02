@@ -22,6 +22,12 @@ def get_embedding_function(model_name: str):
     return HuggingFaceEmbeddings(model_name=model_name)
 
 
+@lru_cache(maxsize=1)
+def get_reranker_model(model_name: str):
+    """Creates and caches the single, shared instance of CrossEncoder."""
+    return CrossEncoder(model_name)
+
+
 class KnowledgeBase:
 
     def __init__(
@@ -48,7 +54,9 @@ class KnowledgeBase:
         self.reranker = None
         if enable_reranking and CrossEncoder is not None:
             try:
-                self.reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+                self.reranker = get_reranker_model(
+                    "cross-encoder/ms-marco-MiniLM-L-6-v2"
+                )
                 console.print(
                     f"🔄 Reranking enabled for KnowledgeBase '{self.name}'",
                     style="bold green",
@@ -152,6 +160,5 @@ class KnowledgeBase:
             def aget_relevant_documents(self, query: str) -> List[Any]:
                 return self.rerank_func(query)
 
-        return RerankedRetriever(retriever, rerank_get_relevant_documents)
         return RerankedRetriever(retriever, rerank_get_relevant_documents)
         return RerankedRetriever(retriever, rerank_get_relevant_documents)

@@ -7,6 +7,7 @@ def create_vector_search_tool(kb: Any, name: str = None, **tool_kwargs):
 
     tool_name = name or f"vector_search_{kb.name.lower().replace(' ', '_')}"
 
+    @tool(name=tool_name, **tool_kwargs)
     def vector_search(query: str, top_k: int = 4) -> str:
         retriever = kb.as_retriever(search_kwargs={"k": top_k})
         docs = retriever.get_relevant_documents(query)
@@ -17,10 +18,7 @@ def create_vector_search_tool(kb: Any, name: str = None, **tool_kwargs):
         result = "\n\n".join([doc.page_content for doc in docs])
         return result
 
-    # Apply the tool decorator and set the function name
-    decorated_tool = tool(vector_search)
-    decorated_tool.__name__ = tool_name
-    return decorated_tool
+    return vector_search
 
 
 def create_vector_search_with_score_tool(kb: Any, **tool_kwargs):
