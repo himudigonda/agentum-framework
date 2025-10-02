@@ -1,4 +1,3 @@
-# agentum/rag/knowledge_base.py
 from typing import Any, List, Optional
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -16,7 +15,6 @@ console = Console()
 
 
 class KnowledgeBase:
-    """A class that handles the ingestion and storage of documents for RAG."""
 
     def __init__(
         self,
@@ -39,7 +37,6 @@ class KnowledgeBase:
                 style="bold yellow",
             )
 
-        # Initialize reranker if available and enabled
         self.reranker = None
         if enable_reranking and CrossEncoder is not None:
             try:
@@ -61,7 +58,6 @@ class KnowledgeBase:
         console.print(f"📚 KnowledgeBase '{self.name}' initialized.", style="bold blue")
 
     def add(self, sources: List[str]):
-        """Loads, splits, and embeds documents from a list of file paths or URLs."""
         docs = []
         for source in sources:
             loader = None
@@ -91,32 +87,25 @@ class KnowledgeBase:
         )
 
     def as_retriever(self, **kwargs: Any):
-        """Exposes the vector store as a LangChain retriever object with optional reranking."""
         retriever = self.vector_store.as_retriever(**kwargs)
 
-        # If reranker is available, wrap the retriever with reranking
         if self.reranker is not None:
             return self._rerank_retriever(retriever)
 
         return retriever
 
     def _rerank_retriever(self, retriever):
-        """Wraps a retriever with reranking functionality."""
 
         def rerank_get_relevant_documents(query: str) -> List[Any]:
-            # Get initial results from vector search
             docs = retriever.get_relevant_documents(query)
 
             if not docs:
                 return docs
 
-            # Rerank using cross-encoder
             try:
-                # Prepare query-document pairs for reranking
                 pairs = [(query, doc.page_content) for doc in docs]
                 scores = self.reranker.predict(pairs)
 
-                # Sort documents by reranking scores
                 doc_scores = list(zip(docs, scores))
                 doc_scores.sort(key=lambda x: x[1], reverse=True)
                 reranked_docs = [doc for doc, score in doc_scores]
@@ -132,12 +121,10 @@ class KnowledgeBase:
                 )
                 return docs
 
-        # Create a new retriever object with reranking
         class RerankedRetriever:
             def __init__(self, original_retriever, rerank_func):
                 self.original_retriever = original_retriever
                 self.rerank_func = rerank_func
-                # Copy attributes from original retriever
                 for attr in dir(original_retriever):
                     if not attr.startswith("_") and not callable(
                         getattr(original_retriever, attr)
@@ -148,7 +135,6 @@ class KnowledgeBase:
                 return self.rerank_func(query)
 
             def aget_relevant_documents(self, query: str) -> List[Any]:
-                # For async compatibility
                 return self.rerank_func(query)
 
         return RerankedRetriever(retriever, rerank_get_relevant_documents)

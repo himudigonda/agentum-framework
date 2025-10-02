@@ -1,4 +1,3 @@
-# agentum/cli.py
 import asyncio
 import json
 from pathlib import Path
@@ -20,7 +19,6 @@ console = Console()
 
 
 def make_layout() -> Layout:
-    """Define the structure for the live display."""
     layout = Layout(name="root")
     layout.split_column(
         Layout(name="header", size=3),
@@ -60,7 +58,6 @@ def run(
         False, "--stream", help="Stream workflow execution in real-time"
     ),
 ):
-    """Run an agentum workflow from a Python script."""
     script_file = Path(script_path)
 
     if not script_file.exists():
@@ -72,14 +69,12 @@ def run(
         raise typer.Exit(1)
 
     try:
-        # Import the script
         import importlib.util
 
         spec = importlib.util.spec_from_file_location("workflow_script", script_file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        # Look for a workflow variable
         workflow = None
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
@@ -96,7 +91,6 @@ def run(
             )
             raise typer.Exit(1)
 
-        # Parse initial state
         import json
 
         if initial_state:
@@ -108,7 +102,6 @@ def run(
         else:
             state = {}
 
-        # Run the workflow
         if stream:
             asyncio.run(_run_streaming(workflow, state, thread_id))
         else:
@@ -120,7 +113,6 @@ def run(
 
 
 async def _run_workflow(workflow: Workflow, state: dict, thread_id: Optional[str]):
-    """Run a workflow and print the result."""
     console.print(f"[green]Running workflow '{workflow.name}'...[/green]")
 
     try:
@@ -139,17 +131,13 @@ async def _run_workflow(workflow: Workflow, state: dict, thread_id: Optional[str
 
 
 async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[str]):
-    """Run a workflow with rich, real-time streaming output."""
 
-    # Initialize the rich layout and log content
     layout = make_layout()
     log_content = Text("", style="dim")
 
-    # Define color scheme for log entries
     TASK_COLOR = "bold cyan"
 
     def log(message: str, style: str = "white"):
-        """Append a message to the log pane."""
         nonlocal log_content
         log_content.append(Text(f"{message}\n", style=style))
         layout["log"].update(
@@ -166,10 +154,8 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
                     if node_name == "__end__":
                         break
 
-                    # 1. Detect and Log the Completion of the Task
                     log(f"• [bold white]Task: {node_name}[/] finished.", TASK_COLOR)
 
-                    # 2. Extract and Log the State Update
                     if node_output:
                         update_keys = list(node_output.keys())
                         log(
@@ -177,21 +163,14 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
                             "dim",
                         )
 
-                    # 3. Handle Special Agent/Tool Events (Observability)
-                    # We can't easily capture the inner events from astream in this LangGraph structure,
-                    # so we will use the global event listener system as a better, more direct way.
-                    # For a clean CLI tracer, the focus is on Node I/O.
                     pass
 
-                    # 4. Update the final state display
                     state.update(node_output)
 
-            # After loop breaks, display final status
             final_state = state
 
             log("🏁 Workflow finished.", "bold green")
 
-            # Update the final state panel
             final_state_syntax = Syntax(
                 json.dumps(final_state, indent=2, default=str),
                 "json",
@@ -206,7 +185,6 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
                 )
             )
 
-            # Keep the final display visible for a moment
             await asyncio.sleep(1)
 
     except Exception as e:
@@ -217,7 +195,6 @@ async def _run_streaming(workflow: Workflow, state: dict, thread_id: Optional[st
 
 @app.command()
 def version():
-    """Show the agentum version."""
     from . import __version__
 
     console.print(f"Agentum version: [bold green]{__version__}[/bold green]")
@@ -228,11 +205,9 @@ def init(
     name: str = typer.Argument(..., help="Name of the workflow"),
     output_dir: str = typer.Option(".", "--output", "-o", help="Output directory"),
 ):
-    """Initialize a new agentum workflow project."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Create a basic workflow template
     template = f'''# {name}.py
 import os
 from dotenv import load_dotenv
@@ -240,18 +215,15 @@ from agentum import Agent, State, Workflow, tool, GoogleLLM
 
 load_dotenv()
 
-# Define a tool
 @tool
 def example_tool(query: str) -> str:
     """An example tool that processes queries."""
     return f"Processed: {{query}}"
 
-# Define state
 class {name}State(State):
     input: str
     output: str = ""
 
-# Create agent
 agent = Agent(
     name="{name}Agent",
     system_prompt="You are a helpful assistant.",
@@ -259,7 +231,6 @@ agent = Agent(
     tools=[example_tool]
 )
 
-# Create workflow
 workflow = Workflow(name="{name}", state={name}State)
 
 workflow.add_task(
@@ -272,7 +243,6 @@ workflow.add_task(
 workflow.set_entry_point("process")
 workflow.add_edge("process", workflow.END)
 
-# Run the workflow
 if __name__ == "__main__":
     result = workflow.run({{"input": "Hello, world!"}})
     print("Result:", result["output"])
@@ -289,7 +259,6 @@ if __name__ == "__main__":
 def validate(
     script_path: str = typer.Argument(..., help="Path to the Python script to validate")
 ):
-    """Validate an agentum workflow script without running it."""
     script_file = Path(script_path)
 
     if not script_file.exists():
@@ -301,14 +270,12 @@ def validate(
         raise typer.Exit(1)
 
     try:
-        # Import the script
         import importlib.util
 
         spec = importlib.util.spec_from_file_location("workflow_script", script_file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        # Look for a workflow variable
         workflow = None
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
@@ -325,33 +292,27 @@ def validate(
             )
             raise typer.Exit(1)
 
-        # Validate the workflow
         console.print(f"[blue]Validating workflow '{workflow.name}'...[/blue]")
 
-        # Check if workflow has tasks
         if not workflow.tasks:
             console.print("[red]❌ Error: Workflow has no tasks defined.[/red]")
             raise typer.Exit(1)
 
-        # Check if entry point is set
         if not workflow.entry_point:
             console.print("[red]❌ Error: No entry point set for workflow.[/red]")
             raise typer.Exit(1)
 
-        # Check if entry point exists
         if workflow.entry_point not in workflow.tasks:
             console.print(
                 f"[red]❌ Error: Entry point '{workflow.entry_point}' not found in tasks.[/red]"
             )
             raise typer.Exit(1)
 
-        # Check for disconnected nodes
         connected_tasks = set()
         for task_name in workflow.tasks.keys():
             connected_tasks.add(task_name)
-            # Check edges
             for edge in workflow.edges:
-                if edge[0] == task_name:  # edges are tuples (from, to)
+                if edge[0] == task_name:
                     connected_tasks.add(edge[1])
 
         disconnected = set(workflow.tasks.keys()) - connected_tasks
@@ -377,7 +338,6 @@ def graph(
         "workflow_graph.png", "--output", "-o", help="Output file for the graph"
     ),
 ):
-    """Generate a visual representation of the workflow graph."""
     script_file = Path(script_path)
 
     if not script_file.exists():
@@ -385,14 +345,12 @@ def graph(
         raise typer.Exit(1)
 
     try:
-        # Import the script
         import importlib.util
 
         spec = importlib.util.spec_from_file_location("workflow_script", script_file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        # Look for a workflow variable
         workflow = None
         for attr_name in dir(module):
             attr = getattr(module, attr_name)
@@ -406,7 +364,6 @@ def graph(
             )
             raise typer.Exit(1)
 
-        # Generate graph visualization
         console.print(
             f"[blue]Generating graph for workflow '{workflow.name}'...[/blue]"
         )
@@ -419,27 +376,24 @@ def graph(
             )
             raise typer.Exit(1)
 
-        # Create a new graph
         dot = graphviz.Digraph(comment=workflow.name)
         dot.attr(rankdir="TB")
         dot.attr("node", shape="box", style="rounded,filled", fillcolor="lightblue")
 
-        # Add nodes
         for task_name in workflow.tasks.keys():
             if task_name == workflow.entry_point:
                 dot.node(task_name, f"🚀 {task_name}", fillcolor="lightgreen")
             else:
                 dot.node(task_name, task_name)
 
-        # Add edges
         for edge in workflow.edges:
-            if isinstance(edge, tuple):  # Regular edge (from, to)
+            if isinstance(edge, tuple):
                 if edge[1] == "__end__":
                     dot.node("__end__", "🏁 END", fillcolor="lightcoral")
                     dot.edge(edge[0], "__end__")
                 else:
                     dot.edge(edge[0], edge[1])
-            elif isinstance(edge, dict):  # Conditional edge
+            elif isinstance(edge, dict):
                 source = edge["source"]
                 for path_name, target in edge["paths"].items():
                     if target == "__end__":
@@ -448,7 +402,6 @@ def graph(
                     else:
                         dot.edge(source, target, label=path_name, style="dashed")
 
-        # Render the graph
         output_path = Path(output_file)
         dot.render(output_path.with_suffix(""), format="png", cleanup=True)
 

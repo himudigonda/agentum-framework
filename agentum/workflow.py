@@ -1,55 +1,15 @@
-# agentum/workflow.py
 import asyncio
 from typing import Any, AsyncGenerator, Callable, Dict, Optional, Type
 
 from rich.console import Console
 
 from .exceptions import TaskConfigurationError, WorkflowDefinitionError
-
-# Import moved to _compile method to avoid circular import
 from .state import State
 
 console = Console()
 
 
 class Workflow:
-    """
-    The main orchestrator for defining, compiling, and running an agentic graph.
-
-    A Workflow is the central component that orchestrates agents and tools
-    into a coherent execution graph. It handles task definition, control flow,
-    state management, and execution.
-
-    Attributes:
-        name: A unique identifier for this workflow
-        state_model: The State class that defines the workflow's data schema
-        persistence: Optional Redis URL for state persistence
-        tasks: Dictionary of task definitions
-        edges: List of control flow edges between tasks
-        entry_point: The starting task of the workflow
-        event_listeners: Dictionary of event listeners for observability
-
-    Example:
-        ```python
-        class ResearchState(State):
-            topic: str
-            result: str = ""
-
-        workflow = Workflow(name="ResearchPipeline", state=ResearchState)
-
-        workflow.add_task(
-            name="research",
-            agent=researcher_agent,
-            instructions="Research: {topic}",
-            output_mapping={"result": "output"}
-        )
-
-        workflow.set_entry_point("research")
-        workflow.add_edge("research", workflow.END)
-
-        result = workflow.run({"topic": "AI trends"})
-        ```
-    """
 
     END = "__end__"
 
@@ -62,30 +22,11 @@ class Workflow:
         self.tasks = {}
         self.edges = []
         self.entry_point = None
-        self._compiled_graph = None  # Add a cache for the compiled graph
-        self.event_listeners = {}  # NEW: dictionary to hold event listeners
+        self._compiled_graph = None
+        self.event_listeners = {}
         console.print(f"✨ Workflow '{self.name}' initialized.", style="bold green")
 
     def on(self, event: str):
-        """
-        A decorator to register a listener for a workflow event.
-
-        This method enables observability by allowing you to hook into
-        workflow execution events like agent_tool_call, task_start, etc.
-
-        Args:
-            event: The event name to listen for
-
-        Returns:
-            A decorator function
-
-        Example:
-            ```python
-            @workflow.on("agent_tool_call")
-            async def log_tool_call(tool_name: str, tool_args: dict):
-                print(f"Agent called {tool_name} with {tool_args}")
-            ```
-        """
 
         def decorator(func: Callable):
             if event not in self.event_listeners:
@@ -96,7 +37,6 @@ class Workflow:
         return decorator
 
     async def _emit(self, event: str, **kwargs):
-        """Asynchronously calls all registered listeners for an event."""
         if event in self.event_listeners:
             for listener in self.event_listeners[event]:
                 await listener(**kwargs)
@@ -108,49 +48,11 @@ class Workflow:
         tool: Optional[Callable] = None,
         instructions: Optional[str] = None,
         inputs: Optional[Dict[str, Any]] = None,
-        output_mapping: Optional[Dict[str, str]] = None,  # NEW PARAMETER
+        output_mapping: Optional[Dict[str, str]] = None,
     ):
-        """
-        Adds a task (node) to the workflow.
-
-        A task represents a unit of work that can be performed by either
-        an agent or a tool. Each task has a unique name and defines how
-        data flows in and out of it.
-
-        Args:
-            name: Unique identifier for this task
-            agent: Optional Agent instance to perform this task
-            tool: Optional tool function to execute
-            instructions: Instructions for agent tasks (required if agent provided)
-            inputs: Input mapping for tool tasks (maps state fields to tool parameters)
-            output_mapping: Maps task output to state fields (e.g., {"result": "output"})
-
-        Raises:
-            ValueError: If task name already exists, or if agent/tool requirements not met
-
-        Example:
-            ```python
-            # Agent task
-            workflow.add_task(
-                name="research",
-                agent=researcher_agent,
-                instructions="Research the topic: {topic}",
-                output_mapping={"research_data": "output"}
-            )
-
-            # Tool task
-            workflow.add_task(
-                name="save_file",
-                tool=write_file,
-                inputs={"filepath": "{output_path}", "content": "{research_data}"},
-                output_mapping={"save_status": "output"}
-            )
-            ```
-        """
         if name in self.tasks:
             raise TaskConfigurationError(f"Task '{name}' already exists.")
 
-        # Validate that either agent or tool is provided, but not both
         if not agent and not tool:
             raise TaskConfigurationError(
                 f"Task '{name}' must have either an agent or a tool."
@@ -160,11 +62,9 @@ class Workflow:
                 f"Task '{name}' cannot have both an agent and a tool."
             )
 
-        # Validate agent-specific requirements
         if agent and not instructions:
             raise TaskConfigurationError(f"Agent task '{name}' must have instructions.")
 
-        # Validate tool-specific requirements
         if tool and not inputs:
             console.print(
                 f"[yellow]Warning: Tool task '{name}' has no input mapping.[/yellow]"
@@ -180,12 +80,9 @@ class Workflow:
         console.print(f"  - Task added: [cyan]{name}[/cyan]")
 
     def add_edge(self, source: str, target: str):
-        """Defines a direct connection from one task to another."""
-        # Validate that source task exists
         if source not in self.tasks and source != self.END:
             raise WorkflowDefinitionError(f"Source task '{source}' does not exist.")
 
-        # Validate that target task exists
         if target not in self.tasks and target != self.END:
             raise WorkflowDefinitionError(f"Target task '{target}' does not exist.")
 
@@ -193,22 +90,17 @@ class Workflow:
         console.print(f"  - Edge added: [cyan]{source}[/cyan] -> [cyan]{target}[/cyan]")
 
     def add_conditional_edges(self, source: str, path: Callable, paths: Dict[str, str]):
-        """Defines a branching point based on the output of a path function."""
-        # Validate that source task exists
         if source not in self.tasks:
             raise WorkflowDefinitionError(f"Source task '{source}' does not exist.")
 
-        # Validate that all path targets exist
         for target in paths.values():
             if target not in self.tasks and target != self.END:
                 raise WorkflowDefinitionError(f"Path target '{target}' does not exist.")
 
         console.print(f"  - Conditional Edge added from [cyan]{source}[/cyan]")
-        # Store this complex edge information for the compiler
         self.edges.append({"source": source, "path": path, "paths": paths})
 
     def set_entry_point(self, task_name: str):
-        """Sets the starting task for the workflow."""
         if task_name not in self.tasks:
             raise WorkflowDefinitionError(
                 f"Entry point task '{task_name}' does not exist."
@@ -217,7 +109,6 @@ class Workflow:
         console.print(f"  - Entry point set to: [cyan]{task_name}[/cyan]")
 
     def _compile(self):
-        """Compiles the workflow into a runnable graph, caching the result."""
         if not self._compiled_graph:
             console.print(
                 "\n🔧 [bold]Compiling workflow into an executable graph...[/bold]",
@@ -231,15 +122,9 @@ class Workflow:
         return self._compiled_graph
 
     def run(self, initial_state: Dict) -> Dict:
-        """
-        Synchronous wrapper for the async execution of the workflow.
-        """
         return asyncio.run(self.arun(initial_state))
 
     async def arun(self, initial_state: Dict, thread_id: Optional[str] = None) -> Dict:
-        """
-        Asynchronously executes the workflow with the given initial state.
-        """
         await self._emit("workflow_start", workflow_name=self.name, state=initial_state)
 
         console.print(
@@ -256,7 +141,6 @@ class Workflow:
             config = {"configurable": {"thread_id": thread_id}}
             runnable_graph = runnable_graph.with_checkpoints(checkpointer)
 
-        # Use the async 'ainvoke' to run the graph
         final_state = await runnable_graph.ainvoke(initial_state, config=config)
 
         console.print("\n🏁 [bold]Workflow finished.[/bold]", style="yellow")
@@ -267,9 +151,6 @@ class Workflow:
     async def astream(
         self, initial_state: Dict, thread_id: Optional[str] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        """
-        Asynchronously streams the output of each step in the workflow.
-        """
         console.print(
             f"\n🚀 [bold]Streaming workflow '{self.name}'...[/bold]", style="yellow"
         )
@@ -283,7 +164,6 @@ class Workflow:
             config = {"configurable": {"thread_id": thread_id}}
             runnable_graph = runnable_graph.with_checkpoints(checkpointer)
 
-        # Use the async 'astream' to get real-time events from the graph
         async for event in runnable_graph.astream(initial_state, config=config):
             yield event
 
