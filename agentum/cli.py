@@ -255,7 +255,7 @@ class {name}State(State):
 agent = Agent(
     name="{name}Agent",
     system_prompt="You are a helpful assistant.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY")),
+    llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY),
     tools=[example_tool]
 )
 

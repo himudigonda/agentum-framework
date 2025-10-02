@@ -1,5 +1,8 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+# MODIFICATION: Import AgentumError
+from agentum.exceptions import AgentumError
+
 from .base import BaseLLM
 
 
@@ -13,6 +16,21 @@ class GoogleLLM(ChatGoogleGenerativeAI, BaseLLM):
     """
 
     def __init__(
-        self, model: str = "gemini-2.5-flash-lite", temperature: float = 0.7, **kwargs
+        self,
+        api_key: str | None = None,
+        model: str = "gemini-2.5-flash-lite",
+        temperature: float = 0.7,
+        **kwargs,
     ):
-        super().__init__(model=model, temperature=temperature, **kwargs)
+        # 1. DEFENSIVE CHECK: If the key is missing, raise a clear Agentum error immediately.
+        if not api_key:
+            raise AgentumError(
+                "GOOGLE_API_KEY not found. Please set the GOOGLE_API_KEY "
+                "environment variable or pass it explicitly to GoogleLLM."
+            )
+
+        # 2. PROCEED: If the key is present, pass it to the superclass.
+        # This bypasses the credentials search path that was causing the deep crash.
+        super().__init__(
+            api_key=api_key, model=model, temperature=temperature, **kwargs
+        )

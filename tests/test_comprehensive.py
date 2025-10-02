@@ -30,6 +30,9 @@ from agentum import (
     tool,
 )
 
+# MODIFICATION: Import the settings object
+from agentum.config import settings
+
 load_dotenv()
 
 
@@ -47,22 +50,26 @@ class TestFramework:
     """Comprehensive test framework for Agentum."""
 
     def __init__(self):
-        if not os.getenv("GOOGLE_API_KEY"):
-            pytest.skip("GOOGLE_API_KEY not found, skipping comprehensive suite")
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            pytest.skip("ANTHROPIC_API_KEY not found, skipping comprehensive suite")
+        # MODIFICATION: Check settings object directly for explicit key presence
+        if not settings.GOOGLE_API_KEY:
+            pytest.skip(
+                "GOOGLE_API_KEY not found in settings, skipping comprehensive suite"
+            )
+        if not settings.ANTHROPIC_API_KEY:
+            pytest.skip(
+                "ANTHROPIC_API_KEY not found in settings, skipping comprehensive suite"
+            )
 
-        # Initialize LLMs with test keys if no real API keys are available
-        google_key = os.getenv("GOOGLE_API_KEY") or "test_key"
-        anthropic_key = os.getenv("ANTHROPIC_API_KEY") or "test_key"
-
+        # Initialize LLMs directly from the settings object
         try:
-            self.google_llm = GoogleLLM(api_key=google_key)
+            # MODIFICATION: Instantiate with key from settings
+            self.google_llm = GoogleLLM(api_key=settings.GOOGLE_API_KEY)
         except Exception:
             self.google_llm = None
 
         try:
-            self.anthropic_llm = AnthropicLLM(api_key=anthropic_key)
+            # MODIFICATION: Instantiate with key from settings
+            self.anthropic_llm = AnthropicLLM(api_key=settings.ANTHROPIC_API_KEY)
         except Exception:
             self.anthropic_llm = None
 

@@ -26,6 +26,7 @@ from agentum import (
     Workflow,
     tool,
 )
+from agentum.config import settings
 
 
 class TestState(State):
@@ -44,8 +45,8 @@ def simple_tool(input_text: str) -> str:
 @pytest.mark.integration
 def test_framework_components():
     """Test all framework components can be instantiated with real providers."""
-    if not os.getenv("GOOGLE_API_KEY") or not os.getenv("ANTHROPIC_API_KEY"):
-        pytest.skip("API keys not found, skipping integration test")
+    if not settings.GOOGLE_API_KEY or not settings.ANTHROPIC_API_KEY:
+        pytest.skip("API keys not found in settings, skipping integration test")
 
     print("🧪 Testing framework components...")
 
@@ -55,16 +56,16 @@ def test_framework_components():
     assert state.result == ""
     print("✅ State creation works")
 
-    # Test LLM providers (without API keys)
+    # Test LLM providers (using settings object)
     try:
-        google_llm = GoogleLLM(api_key="test_key")
+        google_llm = GoogleLLM(api_key=settings.GOOGLE_API_KEY or "test_key")
         assert isinstance(google_llm, GoogleLLM)
         print("✅ GoogleLLM instantiation works")
     except Exception as e:
         print(f"⚠️  GoogleLLM instantiation failed (expected without real API key): {e}")
 
     try:
-        anthropic_llm = AnthropicLLM(api_key="test_key")
+        anthropic_llm = AnthropicLLM(api_key=settings.ANTHROPIC_API_KEY or "test_key")
         assert isinstance(anthropic_llm, AnthropicLLM)
         print("✅ AnthropicLLM instantiation works")
     except Exception as e:
