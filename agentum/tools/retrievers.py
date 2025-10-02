@@ -3,9 +3,10 @@ from typing import Any
 from agentum import tool
 
 
-def create_vector_search_tool(kb: Any, **tool_kwargs):
+def create_vector_search_tool(kb: Any, name: str = None, **tool_kwargs):
 
-    @tool(**tool_kwargs)
+    tool_name = name or f"vector_search_{kb.name.lower().replace(' ', '_')}"
+
     def vector_search(query: str, top_k: int = 4) -> str:
         retriever = kb.as_retriever(search_kwargs={"k": top_k})
         docs = retriever.get_relevant_documents(query)
@@ -16,7 +17,10 @@ def create_vector_search_tool(kb: Any, **tool_kwargs):
         result = "\n\n".join([doc.page_content for doc in docs])
         return result
 
-    return vector_search
+    # Apply the tool decorator and set the function name
+    decorated_tool = tool(vector_search)
+    decorated_tool.__name__ = tool_name
+    return decorated_tool
 
 
 def create_vector_search_with_score_tool(kb: Any, **tool_kwargs):

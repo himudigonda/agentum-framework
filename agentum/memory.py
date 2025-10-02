@@ -1,4 +1,5 @@
-# agentum/memory.py
+from datetime import datetime
+from functools import lru_cache
 from typing import Any, ClassVar, List, Optional
 
 from langchain.chains import LLMChain
@@ -14,6 +15,12 @@ from langchain_core.messages import (
 from pydantic import BaseModel, ConfigDict, Field
 
 
+@lru_cache(maxsize=1)
+def get_embedding_function():
+    """Creates and caches the single, shared instance of HuggingFaceEmbeddings."""
+    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+
 class BaseMemory(BaseModel):
     def load_messages(self) -> List[BaseMessage]:
         raise NotImplementedError
@@ -23,7 +30,6 @@ class BaseMemory(BaseModel):
 
 
 class ConversationMemory(BaseMemory):
-    """Stores conversation history in-memory for the duration of a workflow run."""
 
     history: List[BaseMessage] = []
 
@@ -35,11 +41,10 @@ class ConversationMemory(BaseMemory):
 
 
 class SummaryMemory(BaseMemory):
-    """Stores a summarized version of the conversation history."""
 
     history: List[BaseMessage] = Field(default_factory=list)
     summary: str = ""
-    llm: Any  # MODIFICATION: LLM is REQUIRED to be passed in, removing race condition
+    llm: Any
 
     SUMMARIZER_PROMPT: ClassVar[
         str
@@ -68,7 +73,6 @@ class SummaryMemory(BaseMemory):
     def save_messages(self, messages: List[BaseMessage]):
         self.history.extend(messages)
 
-        # MODIFICATION: Remove conditional LLM instantiation, assume it is ready.
         new_lines = get_buffer_string(messages)
 
         chain = LLMChain(
@@ -82,26 +86,18 @@ class SummaryMemory(BaseMemory):
 
 
 class VectorStoreMemory(BaseMemory):
-    """
-    Stores and retrieves conversation history using a Vector Store (Chroma).
-    This enables semantic search over past conversations.
-    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     vector_store: Chroma = Field(
         default_factory=lambda: Chroma(
             collection_name="vector_memory",
-            embedding_function=HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2"),
+            embedding_function=get_embedding_function(),
         )
     )
     current_buffer: List[BaseMessage] = Field(default_factory=list)
 
     def load_messages(self) -> List[BaseMessage]:
-        """
-        Retrieves relevant past messages based on the latest user input.
-        We only load messages if the current buffer has a new HumanMessage.
-        """
         if not self.current_buffer:
             return []
 
@@ -121,18 +117,14 @@ class VectorStoreMemory(BaseMemory):
         ]
 
     def save_messages(self, messages: List[BaseMessage]):
-        """
-        Converts all messages from the current turn into a single document and saves it.
-        """
         text_to_save = get_buffer_string(messages)
 
         self.vector_store.add_texts(
             [text_to_save],
-            metadatas=[{"turn": len(self.vector_store.get()["ids"]) + 1}],
+            metadatas=[{"timestamp": str(datetime.now())}],
         )
 
         self.current_buffer = []
 
     def append_message_for_search(self, message: BaseMessage):
-        """Used by the agent to temporarily store the latest message for the semantic search trigger."""
         self.current_buffer.append(message)

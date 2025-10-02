@@ -1,3 +1,5 @@
+import os
+from functools import lru_cache
 from typing import Any, List, Optional
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -14,6 +16,12 @@ except ImportError:
 console = Console()
 
 
+@lru_cache(maxsize=1)
+def get_embedding_function(model_name: str):
+    """Creates and caches the single, shared instance of HuggingFaceEmbeddings."""
+    return HuggingFaceEmbeddings(model_name=model_name)
+
+
 class KnowledgeBase:
 
     def __init__(
@@ -24,7 +32,7 @@ class KnowledgeBase:
         enable_reranking: bool = True,
     ):
         self.name = name
-        self.embedding_function = HuggingFaceEmbeddings(model_name=embedding_model)
+        self.embedding_function = get_embedding_function(embedding_model)
         self.vector_store = Chroma(
             collection_name=name,
             embedding_function=self.embedding_function,
@@ -73,8 +81,15 @@ class KnowledgeBase:
                 )
                 continue
 
-            console.print(f"  - Loading from source: {source}")
-            docs.extend(loader.load())
+            # Sanitize the source to prevent local path disclosure
+            source_for_metadata = (
+                os.path.basename(source) if not source.startswith("http") else source
+            )
+            console.print(f"  - Loading from source: {source_for_metadata}")
+            loaded_docs = loader.load()
+            for doc in loaded_docs:
+                doc.metadata["source"] = source_for_metadata  # Overwrite/set the source
+            docs.extend(loaded_docs)
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000, chunk_overlap=200
@@ -137,5 +152,6 @@ class KnowledgeBase:
             def aget_relevant_documents(self, query: str) -> List[Any]:
                 return self.rerank_func(query)
 
+        return RerankedRetriever(retriever, rerank_get_relevant_documents)
         return RerankedRetriever(retriever, rerank_get_relevant_documents)
         return RerankedRetriever(retriever, rerank_get_relevant_documents)

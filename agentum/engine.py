@@ -32,9 +32,11 @@ def _safe_format(template: str, state_data: Dict) -> str:
     import re
 
     keys_in_template = re.findall(r"\{(\w+)\}", template)
-    restricted_data = {
-        k: state_data.get(k, f"{{MISSING_KEY:{k}}}") for k in keys_in_template
-    }
+    restricted_data = {}
+    for k in keys_in_template:
+        if k not in state_data:
+            raise KeyError(k)
+        restricted_data[k] = state_data[k]
     return template.format(**restricted_data)
 
 
@@ -252,10 +254,12 @@ class GraphCompiler:
                 "agent_end", agent_name=agent.name, final_response=final_content
             )
 
-            state_update = {
-                state_key: final_content
-                for state_key, response_key in output_mapping.items()
-            }
+            state_update = {}
+            if output_mapping:
+                state_update = {
+                    state_key: final_content
+                    for state_key, response_key in output_mapping.items()
+                }
             await self.workflow._emit(
                 "task_finish", task_name=task_name, state_update=state_update
             )
@@ -298,9 +302,12 @@ class GraphCompiler:
                 )
             )
 
-            state_update = {
-                state_key: result for state_key, response_key in output_mapping.items()
-            }
+            state_update = {}
+            if output_mapping:
+                state_update = {
+                    state_key: result
+                    for state_key, response_key in output_mapping.items()
+                }
             await self.workflow._emit(
                 "task_finish", task_name=task_name, state_update=state_update
             )
@@ -333,6 +340,10 @@ class GraphCompiler:
                 path_func = edge["path"]
                 paths_map = edge["paths"]
                 workflow_graph.add_conditional_edges(source, path_func, paths_map)
+
+        return workflow_graph.compile()
+
+        return workflow_graph.compile()
 
         return workflow_graph.compile()
 
