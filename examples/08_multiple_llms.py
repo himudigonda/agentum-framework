@@ -8,11 +8,10 @@ To run this example:
 2. Uncomment the provider you wish to use.
 """
 
-import os
-
 from dotenv import load_dotenv
 
 from agentum import Agent, AnthropicLLM, GoogleLLM, OpenAILLM, State, Workflow
+from agentum.config import settings  # MODIFICATION: Import settings
 
 load_dotenv()
 
@@ -27,20 +26,23 @@ class StoryState(State):
 
 # Option A: Use Google Gemini (Default)
 llm_provider = GoogleLLM(
-    api_key=os.getenv("GOOGLE_API_KEY"),
+    # MODIFICATION: Use the centralized settings object
+    api_key=settings.GOOGLE_API_KEY,
     temperature=0.8,
     model="gemini-2.5-flash-lite",
 )
 
 # Option B: Use Anthropic Claude 3.5 Sonnet (uncomment to switch)
 # llm_provider = AnthropicLLM(
-#     api_key=os.getenv("ANTHROPIC_API_KEY"),
+#     # MODIFICATION: Use the centralized settings object
+#     api_key=settings.ANTHROPIC_API_KEY,
 #     temperature=0.8,
 # )
 
 # Option C: Use OpenAI GPT-4o-mini (uncomment to switch)
 # llm_provider = OpenAILLM(
-#     api_key=os.getenv("OPENAI_API_KEY"),
+#     # MODIFICATION: Use the centralized settings object
+#     api_key=settings.OPENAI_API_KEY,
 #     temperature=0.8,
 # )
 

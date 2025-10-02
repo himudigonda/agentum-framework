@@ -1,8 +1,5 @@
 from langchain_openai import ChatOpenAI
 
-# MODIFICATION: Import AgentumError
-from agentum.exceptions import AgentumError
-
 from .base import BaseLLM
 
 
@@ -22,14 +19,8 @@ class OpenAILLM(ChatOpenAI, BaseLLM):
         temperature: float = 0.7,
         **kwargs,
     ):
-        # 1. DEFENSIVE CHECK: If the key is missing, raise a clear Agentum error immediately.
-        if not api_key:
-            raise AgentumError(
-                "OPENAI_API_KEY not found. Please set the OPENAI_API_KEY "
-                "environment variable or pass it explicitly to OpenAILLM."
-            )
-
-        # 2. PROCEED: If the key is present, pass it to the superclass.
+        # MODIFICATION: REMOVE the explicit `if not api_key: raise AgentumError(...)` check.
+        # This allows ADC and environment variables to work correctly without a crash.
         super().__init__(
             api_key=api_key, model=model, temperature=temperature, **kwargs
         )

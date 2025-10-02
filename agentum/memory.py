@@ -13,9 +13,6 @@ from langchain_core.messages import (
 )
 from pydantic import BaseModel, ConfigDict, Field
 
-from agentum.config import settings
-from agentum.providers.google import GoogleLLM
-
 
 class BaseMemory(BaseModel):
     def load_messages(self) -> List[BaseMessage]:
@@ -42,7 +39,7 @@ class SummaryMemory(BaseMemory):
 
     history: List[BaseMessage] = Field(default_factory=list)
     summary: str = ""
-    llm: Optional[Any] = None
+    llm: Any  # MODIFICATION: LLM is REQUIRED to be passed in, removing race condition
 
     SUMMARIZER_PROMPT: ClassVar[
         str
@@ -71,18 +68,7 @@ class SummaryMemory(BaseMemory):
     def save_messages(self, messages: List[BaseMessage]):
         self.history.extend(messages)
 
-        # MODIFICATION: Ensure we explicitly check for the API key from settings
-        # for LLM instantiation, preventing reliance on os.getenv() fallback.
-        if not self.llm and settings.GOOGLE_API_KEY:
-            self.llm = GoogleLLM(
-                api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"
-            )
-        elif not self.llm:
-            # Fallback to a mock LLM if no key is present in an environment where it's okay
-            from tests.mock_llm import MockLLM
-
-            self.llm = MockLLM()
-
+        # MODIFICATION: Remove conditional LLM instantiation, assume it is ready.
         new_lines = get_buffer_string(messages)
 
         chain = LLMChain(

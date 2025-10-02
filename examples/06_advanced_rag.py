@@ -11,6 +11,7 @@ from agentum import (
     Workflow,
     create_vector_search_tool,
 )
+from agentum.config import settings  # MODIFICATION: Import settings
 
 load_dotenv()
 
@@ -34,7 +35,9 @@ vector_search_tool = create_vector_search_tool(company_kb)
 analyst = Agent(
     name="FinancialAnalyst",
     system_prompt="You are an expert financial analyst. You must answer questions using only the information found by your tools.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
+    llm=GoogleLLM(
+        api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"
+    ),  # MODIFICATION: Use settings
     tools=[vector_search_tool],
 )
 

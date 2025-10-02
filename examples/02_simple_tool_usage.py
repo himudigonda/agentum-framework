@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from pydantic import Field
 
 from agentum import Agent, GoogleLLM, State, Workflow, search_web_tavily
+from agentum.config import settings  # MODIFICATION: Import settings
 
 load_dotenv()
 
@@ -18,14 +19,18 @@ class NewsState(State):
 news_researcher = Agent(
     name="NewsResearcher",
     system_prompt="You are a financial news researcher. Your goal is to find the most relevant, recent news article about a company.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
+    llm=GoogleLLM(
+        api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"
+    ),  # MODIFICATION: Use settings
     tools=[search_web_tavily],
 )
 
 sentiment_analyst = Agent(
     name="SentimentAnalyst",
     system_prompt="You are a sentiment analysis expert. Analyze the text and respond with only 'Positive', 'Negative', or 'Neutral'.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
+    llm=GoogleLLM(
+        api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"
+    ),  # MODIFICATION: Use settings
 )
 
 news_workflow = Workflow(name="News_Analysis_Pipeline", state=NewsState)
