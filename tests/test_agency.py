@@ -14,6 +14,7 @@ class TestAgency:
 
         @tool
         def get_weather(city: str) -> str:
+            """Get weather for a city"""
             return f'Weather in {city}: 72°F'
         assert hasattr(get_weather, '__name__')
         assert get_weather.__name__ == 'get_weather'
