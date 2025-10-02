@@ -27,6 +27,7 @@ from agentum import (
     search_web_tavily,
     transcribe_audio,
 )
+from agentum.config import settings
 
 load_dotenv()
 
@@ -40,33 +41,28 @@ class VoiceRequestState(State):
 researcher = Agent(
     name="VoiceResearcher",
     system_prompt="You are a helpful assistant. You first understand a user's request by transcribing it, then you search the web to find an answer.",
-    llm=GoogleLLM(api_key=os.getenv("GOOGLE_API_KEY"), model="gemini-2.5-flash-lite"),
+    llm=GoogleLLM(api_key=settings.GOOGLE_API_KEY, model="gemini-2.5-flash-lite"),
     tools=[search_web_tavily, transcribe_audio],
 )
-
 voice_workflow = Workflow(name="Voice_Request_Workflow", state=VoiceRequestState)
-
 voice_workflow.add_task(
     name="transcribe_request",
     tool=transcribe_audio,
     inputs={
         "audio_filepath": "{audio_filepath}",
-        "project_id": os.getenv("GOOGLE_CLOUD_PROJECT_ID"),
+        "project_id": settings.GOOGLE_CLOUD_PROJECT_ID,
     },
     output_mapping={"transcription": "output"},
 )
-
 voice_workflow.add_task(
     name="conduct_research",
     agent=researcher,
     instructions="Perform a web search for the following request: {transcription}",
     output_mapping={"research_result": "output"},
 )
-
 voice_workflow.set_entry_point("transcribe_request")
 voice_workflow.add_edge("transcribe_request", "conduct_research")
 voice_workflow.add_edge("conduct_research", voice_workflow.END)
-
 if __name__ == "__main__":
     audio_file = "request.wav"
     if not os.path.exists(audio_file):
@@ -76,11 +72,8 @@ if __name__ == "__main__":
         )
     else:
         initial_state = {"audio_filepath": audio_file}
-
         print(f"🚀 Starting workflow for audio file: {audio_file}")
-
         final_state = voice_workflow.run(initial_state)
-
         print("\n--- Transcription ---")
         print(f"Text from audio: '{final_state['transcription']}'")
         print("\n--- Research Result ---")
