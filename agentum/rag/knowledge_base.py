@@ -1,4 +1,3 @@
-import asyncio
 from functools import lru_cache
 from typing import Any, List, Optional
 
@@ -63,7 +62,7 @@ class KnowledgeBase:
                 self.reranker = None
         elif enable_reranking and CrossEncoder is None:
             console.print(
-                f"[yellow]Warning: Reranking requested but sentence-transformers not installed[/yellow]"
+                "[yellow]Warning: Reranking requested but sentence-transformers not installed[/yellow]"
             )
         console.print(f"📚 KnowledgeBase '{self.name}' initialized.", style="bold blue")
 

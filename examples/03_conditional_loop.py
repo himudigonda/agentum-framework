@@ -1,10 +1,7 @@
-import os
-
 from dotenv import load_dotenv
-from pydantic import Field
 
 from agentum import Agent, GoogleLLM, State, Workflow
-from agentum.config import settings
+from agentum.core.config import settings
 
 load_dotenv()
 
