@@ -1,32 +1,20 @@
 from datetime import datetime
 from functools import lru_cache
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar, List
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_core.messages import (
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    get_buffer_string,
-)
+from langchain_core.messages import AIMessage, BaseMessage, get_buffer_string
 from pydantic import BaseModel, ConfigDict, Field
+
+from .base import BaseMemory
 
 
 @lru_cache(maxsize=1)
 def get_embedding_function():
     return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-
-
-class BaseMemory(BaseModel):
-
-    def load_messages(self, latest_input: BaseMessage) -> List[BaseMessage]:
-        raise NotImplementedError
-
-    def save_messages(self, messages: List[BaseMessage]):
-        raise NotImplementedError
 
 
 class ConversationMemory(BaseMemory):
