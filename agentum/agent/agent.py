@@ -2,7 +2,7 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from .providers.base import BaseLLM
+from ..providers.base import BaseLLM
 
 
 class Agent(BaseModel):

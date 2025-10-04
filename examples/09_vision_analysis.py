@@ -6,12 +6,10 @@ to analyze the image content to answer the question. This showcases how
 Agentum can now handle both text and image data in a single, seamless workflow.
 """
 
-import os
-
 from dotenv import load_dotenv
 
 from agentum import Agent, GoogleLLM, State, Workflow
-from agentum.config import settings
+from agentum.core.config import settings
 
 load_dotenv()
 

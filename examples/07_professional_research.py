@@ -23,7 +23,7 @@ import os
 from dotenv import load_dotenv
 
 from agentum import Agent, GoogleLLM, State, Workflow, search_web_tavily, write_file
-from agentum.config import settings
+from agentum.core.config import settings
 
 load_dotenv()
 

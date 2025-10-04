@@ -90,4 +90,4 @@ dev = [
 ]
 
 [project.scripts]
-agentum = "agentum.cli:app"
+agentum = "agentum.cli.main:app"

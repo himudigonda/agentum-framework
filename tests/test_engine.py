@@ -1,156 +1,246 @@
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
+
 import pytest
-from agentum import Agent, GoogleLLM, State, Workflow, tool
+
+from agentum import Agent, State, Workflow, tool
 from agentum.engine import GraphCompiler
-from tests.mock_llm import MockLLM, MockAsyncLLM
+from agentum.engine.nodes import create_agent_node, create_tool_node
+from tests.mock_llm import MockAsyncLLM, MockLLM
+
 
 class TestState(State):
     input: str
-    output: str = ''
+    output: str = ""
+
 
 class TestEngine:
 
     def test_graph_compiler_initialization(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
         assert compiler.workflow == workflow
 
     def test_create_agent_node_without_tools(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
-        agent = Agent(name='TestAgent', system_prompt='You are a test agent.', llm=MockLLM())
-        task_details = {'agent': agent, 'instructions': 'Process: {input}', 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_agent_node('test_task', task_details)
+        agent = Agent(
+            name="TestAgent", system_prompt="You are a test agent.", llm=MockLLM()
+        )
+        task_details = {
+            "agent": agent,
+            "instructions": "Process: {input}",
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_agent_node("test_task", task_details, workflow)
         assert callable(node_func)
 
     def test_create_agent_node_with_tools(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
 
         @tool
         def test_tool(query: str) -> str:
-            return f'Result for {query}'
-        agent = Agent(name='TestAgent', system_prompt='You are a test agent.', llm=MockLLM(), tools=[test_tool])
-        task_details = {'agent': agent, 'instructions': 'Process: {input}', 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_agent_node('test_task', task_details)
+            return f"Result for {query}"
+
+        agent = Agent(
+            name="TestAgent",
+            system_prompt="You are a test agent.",
+            llm=MockLLM(),
+            tools=[test_tool],
+        )
+        task_details = {
+            "agent": agent,
+            "instructions": "Process: {input}",
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_agent_node("test_task", task_details, workflow)
         assert callable(node_func)
 
     def test_create_tool_node(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
 
         def test_tool(input_text: str) -> str:
-            return f'Processed: {input_text}'
-        task_details = {'tool': test_tool, 'inputs': {'input_text': '{input}'}, 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_tool_node('test_tool', task_details)
+            return f"Processed: {input_text}"
+
+        task_details = {
+            "tool": test_tool,
+            "inputs": {"input_text": "{input}"},
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_tool_node("test_tool", task_details, workflow)
         assert callable(node_func)
 
     @pytest.mark.asyncio
     async def test_agent_node_execution(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
         mock_response = MagicMock()
-        mock_response.content = 'Test response'
+        mock_response.content = "Test response"
         mock_response.tool_calls = []
         mock_llm = MockAsyncLLM()
         mock_llm.ainvoke_mock.return_value = mock_response
-        agent = Agent(name='TestAgent', system_prompt='You are a test agent.', llm=mock_llm)
-        task_details = {'agent': agent, 'instructions': 'Process: {input}', 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_agent_node('test_task', task_details)
-        state = TestState(input='test input')
+        agent = Agent(
+            name="TestAgent", system_prompt="You are a test agent.", llm=mock_llm
+        )
+        task_details = {
+            "agent": agent,
+            "instructions": "Process: {input}",
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_agent_node("test_task", task_details, workflow)
+        state = TestState(input="test input")
         result = await node_func(state)
-        assert 'output' in result
-        assert result['output'] == 'Test response'
-        mock_llm.ainvoke.assert_called_once()
+        assert "output" in result
+        assert result["output"] == "Test response"
+        mock_llm.ainvoke_mock.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_agent_node_with_tool_calls(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
 
         @tool
         def test_tool(query: str) -> str:
-            return f'Tool result for {query}'
+            return f"Tool result for {query}"
+
         tool_call_response = MagicMock()
-        tool_call_response.content = ''
-        tool_call_response.tool_calls = [{'name': 'test_tool', 'args': {'query': 'test query'}, 'id': 'call_123'}]
+        tool_call_response.content = ""
+        tool_call_response.tool_calls = [
+            {"name": "test_tool", "args": {"query": "test query"}, "id": "call_123"}
+        ]
         final_response = MagicMock()
-        final_response.content = 'Final response'
+        final_response.content = "Final response"
         final_response.tool_calls = []
         mock_llm = MockAsyncLLM()
         mock_llm.ainvoke_mock.side_effect = [tool_call_response, final_response]
         mock_llm.bind_tools_mock.return_value = mock_llm
-        agent = Agent(name='TestAgent', system_prompt='You are a test agent.', llm=mock_llm, tools=[test_tool])
-        task_details = {'agent': agent, 'instructions': 'Process: {input}', 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_agent_node('test_task', task_details)
-        state = TestState(input='test input')
+        agent = Agent(
+            name="TestAgent",
+            system_prompt="You are a test agent.",
+            llm=mock_llm,
+            tools=[test_tool],
+        )
+        task_details = {
+            "agent": agent,
+            "instructions": "Process: {input}",
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_agent_node("test_task", task_details, workflow)
+        state = TestState(input="test input")
         result = await node_func(state)
-        assert 'output' in result
-        assert result['output'] == 'Final response'
-        assert mock_llm.ainvoke.call_count == 2
+        assert "output" in result
+        assert result["output"] == "Final response"
+        assert mock_llm.ainvoke_mock.call_count == 2
 
     @pytest.mark.asyncio
     async def test_tool_node_execution(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
 
         def test_tool(input_text: str) -> str:
-            return f'Processed: {input_text}'
-        task_details = {'tool': test_tool, 'inputs': {'input_text': '{input}'}, 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_tool_node('test_tool', task_details)
-        state = TestState(input='test input')
+            return f"Processed: {input_text}"
+
+        task_details = {
+            "tool": test_tool,
+            "inputs": {"input_text": "{input}"},
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_tool_node("test_tool", task_details, workflow)
+        state = TestState(input="test input")
         result = await node_func(state)
-        assert 'output' in result
-        assert result['output'] == 'Processed: test input'
+        assert "output" in result
+        assert result["output"] == "Processed: test input"
 
     @pytest.mark.asyncio
     async def test_agent_retry_logic(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
         mock_llm = MockAsyncLLM()
-        mock_llm.ainvoke_mock.side_effect = [Exception('Network error'), Exception('Rate limit'), MagicMock(content='Success response', tool_calls=[])]
-        agent = Agent(name='TestAgent', system_prompt='You are a test agent.', llm=mock_llm, max_retries=3)
-        task_details = {'agent': agent, 'instructions': 'Process: {input}', 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_agent_node('test_task', task_details)
-        state = TestState(input='test input')
+        mock_llm.ainvoke_mock.side_effect = [
+            Exception("Network error"),
+            Exception("Rate limit"),
+            MagicMock(content="Success response", tool_calls=[]),
+        ]
+        agent = Agent(
+            name="TestAgent",
+            system_prompt="You are a test agent.",
+            llm=mock_llm,
+            max_retries=3,
+        )
+        task_details = {
+            "agent": agent,
+            "instructions": "Process: {input}",
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_agent_node("test_task", task_details, workflow)
+        state = TestState(input="test input")
         result = await node_func(state)
-        assert 'output' in result
-        assert result['output'] == 'Success response'
-        assert mock_llm.ainvoke.call_count == 3
+        assert "output" in result
+        assert result["output"] == "Success response"
+        assert mock_llm.ainvoke_mock.call_count == 3
 
     @pytest.mark.asyncio
     async def test_agent_max_retries_exceeded(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
         compiler = GraphCompiler(workflow)
         mock_llm = MockAsyncLLM()
-        mock_llm.ainvoke_mock.side_effect = Exception('Persistent error')
-        agent = Agent(name='TestAgent', system_prompt='You are a test agent.', llm=mock_llm, max_retries=2)
-        task_details = {'agent': agent, 'instructions': 'Process: {input}', 'output_mapping': {'output': 'output'}}
-        node_func = compiler._create_agent_node('test_task', task_details)
-        state = TestState(input='test input')
-        with pytest.raises(Exception, match='Persistent error'):
+        mock_llm.ainvoke_mock.side_effect = Exception("Persistent error")
+        agent = Agent(
+            name="TestAgent",
+            system_prompt="You are a test agent.",
+            llm=mock_llm,
+            max_retries=2,
+        )
+        task_details = {
+            "agent": agent,
+            "instructions": "Process: {input}",
+            "output_mapping": {"output": "output"},
+        }
+        node_func = create_agent_node("test_task", task_details, workflow)
+        state = TestState(input="test input")
+        with pytest.raises(Exception, match="Persistent error"):
             await node_func(state)
-        assert mock_llm.ainvoke.call_count == 2
+        assert mock_llm.ainvoke_mock.call_count == 2
 
     def test_compile_workflow(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
-        workflow.add_task(name='test_task', agent=Agent(name='TestAgent', system_prompt='Test', llm=MockLLM()), instructions='Process: {input}', output_mapping={'output': 'output'})
-        workflow.set_entry_point('test_task')
-        workflow.add_edge('test_task', workflow.END)
+        workflow = Workflow(name="TestWorkflow", state=TestState)
+        workflow.add_task(
+            name="test_task",
+            agent=Agent(name="TestAgent", system_prompt="Test", llm=MockLLM()),
+            instructions="Process: {input}",
+            output_mapping={"output": "output"},
+        )
+        workflow.set_entry_point("test_task")
+        workflow.add_edge("test_task", workflow.END)
         compiler = GraphCompiler(workflow)
         compiled_graph = compiler.compile()
         assert compiled_graph is not None
 
     def test_compile_workflow_with_conditional_edges(self):
-        workflow = Workflow(name='TestWorkflow', state=TestState)
-        workflow.add_task(name='task1', agent=Agent(name='TestAgent', system_prompt='Test', llm=MockLLM()), instructions='Process: {input}', output_mapping={'output': 'output'})
-        workflow.add_task(name='task2', agent=Agent(name='TestAgent2', system_prompt='Test2', llm=MockLLM()), instructions='Process: {input}', output_mapping={'output': 'output'})
-        workflow.set_entry_point('task1')
+        workflow = Workflow(name="TestWorkflow", state=TestState)
+        workflow.add_task(
+            name="task1",
+            agent=Agent(name="TestAgent", system_prompt="Test", llm=MockLLM()),
+            instructions="Process: {input}",
+            output_mapping={"output": "output"},
+        )
+        workflow.add_task(
+            name="task2",
+            agent=Agent(name="TestAgent2", system_prompt="Test2", llm=MockLLM()),
+            instructions="Process: {input}",
+            output_mapping={"output": "output"},
+        )
+        workflow.set_entry_point("task1")
 
         def should_continue(state: TestState) -> str:
-            return 'continue' if len(state.input) > 5 else 'stop'
-        workflow.add_conditional_edges(source='task1', path=should_continue, paths={'continue': 'task2', 'stop': workflow.END})
+            return "continue" if len(state.input) > 5 else "stop"
+
+        workflow.add_conditional_edges(
+            source="task1",
+            path=should_continue,
+            paths={"continue": "task2", "stop": workflow.END},
+        )
         compiler = GraphCompiler(workflow)
         compiled_graph = compiler.compile()
         assert compiled_graph is not None
