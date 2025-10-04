@@ -1,10 +1,9 @@
 import asyncio
-import os
 
 from dotenv import load_dotenv
 
 from agentum import Agent, ConversationMemory, GoogleLLM, State, Workflow, tool
-from agentum.config import settings
+from agentum.core.config import settings
 from agentum.testing import Evaluator, TestSuite
 
 load_dotenv()

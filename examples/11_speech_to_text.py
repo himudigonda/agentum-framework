@@ -27,7 +27,7 @@ from agentum import (
     search_web_tavily,
     transcribe_audio,
 )
-from agentum.config import settings
+from agentum.core.config import settings
 
 load_dotenv()
 
@@ -66,7 +66,7 @@ voice_workflow.add_edge("conduct_research", voice_workflow.END)
 if __name__ == "__main__":
     audio_file = "request.wav"
     if not os.path.exists(audio_file):
-        print(f"Audio file not found. Please download it by running:")
+        print("Audio file not found. Please download it by running:")
         print(
             'curl -o request.wav "https://storage.googleapis.com/agentum-examples/request.wav"'
         )

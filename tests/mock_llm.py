@@ -1,10 +1,14 @@
 """
 Mock LLM classes for testing that properly inherit from BaseLLM.
 """
-from unittest.mock import AsyncMock, MagicMock
+
 from typing import Any, List
+from unittest.mock import AsyncMock, MagicMock
+
 from langchain_core.messages import BaseMessage
+
 from agentum.providers.base import BaseLLM
+
 
 class MockLLM(BaseLLM):
 
@@ -24,12 +28,13 @@ class MockLLM(BaseLLM):
             else:
                 return self.responses[-1]
         mock_response = MagicMock()
-        mock_response.content = 'Mock response'
+        mock_response.content = "Mock response"
         mock_response.tool_calls = []
         return mock_response
 
-    def bind_tools(self, tools: List[Any]) -> 'MockLLM':
+    def bind_tools(self, tools: List[Any]) -> "MockLLM":
         return self
+
 
 class MockAsyncLLM(BaseLLM):
 
@@ -41,10 +46,6 @@ class MockAsyncLLM(BaseLLM):
     async def ainvoke(self, messages: List[BaseMessage]) -> Any:
         return await self.ainvoke_mock(messages)
 
-    def bind_tools(self, tools: List[Any]) -> 'MockAsyncLLM':
+    def bind_tools(self, tools: List[Any]) -> "MockAsyncLLM":
         self.bind_tools_mock.return_value = self
         return self.bind_tools_mock(tools)
-
-    @property
-    def ainvoke(self):
-        return self.ainvoke_mock

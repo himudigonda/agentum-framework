@@ -12,8 +12,6 @@ Key Features Demonstrated:
 - Cross-encoder reranking for better relevance
 """
 
-import os
-
 from dotenv import load_dotenv
 from pydantic import Field
 
@@ -25,7 +23,7 @@ from agentum import (
     Workflow,
     create_vector_search_tool,
 )
-from agentum.config import settings
+from agentum.core.config import settings
 
 load_dotenv()
 
@@ -75,7 +73,7 @@ if __name__ == "__main__":
         print("=" * 80)
         initial_state = {"question": question}
         final_state = advanced_rag_workflow.run(initial_state)
-        print(f"\n📊 Answer:")
+        print("\n📊 Answer:")
         print(final_state["answer"])
         print("\n" + "=" * 80)
     print("\n✅ Advanced RAG with reranking completed successfully!")

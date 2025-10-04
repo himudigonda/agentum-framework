@@ -19,7 +19,7 @@ import os
 from dotenv import load_dotenv
 
 from agentum import Agent, GoogleLLM, State, Workflow
-from agentum.config import settings
+from agentum.core.config import settings
 
 load_dotenv()
 
@@ -49,7 +49,7 @@ local_vision_workflow.add_edge("analyze_local_image", local_vision_workflow.END)
 if __name__ == "__main__":
     local_image = "cityscape.jpg"
     if not os.path.exists(local_image):
-        print(f"Image file not found. Please download it by running:")
+        print("Image file not found. Please download it by running:")
         print(
             'curl -o cityscape.jpg "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?q=80&w=2070&auto=format&fit=crop"'
         )
